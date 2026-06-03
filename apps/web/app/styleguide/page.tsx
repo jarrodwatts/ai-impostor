@@ -26,8 +26,8 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-const you = PLAYERS[0];
-const other = PLAYERS[3];
+const you = PLAYERS[0]!;
+const other = PLAYERS[3]!;
 
 export default function StyleguidePage() {
   return (

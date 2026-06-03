@@ -23,7 +23,7 @@ const tagVariants = cva(
   },
 );
 
-const TONE_STYLE: Record<string, { bg: string; c: string; b: string }> = {
+const TONE_STYLE = {
   neutral: { bg: "rgba(255,255,255,0.06)", c: C.muted, b: C.line },
   human: { bg: "rgba(22,163,74,0.16)", c: "#4ade80", b: "rgba(22,163,74,0.4)" },
   ai: { bg: C.berrySoft, c: C.berryHi, b: "rgba(224,58,139,0.45)" },
@@ -36,7 +36,7 @@ export type TagProps = VariantProps<typeof tagVariants> & {
 };
 
 export function Tag({ children, tone = "neutral", className }: TagProps) {
-  const m = TONE_STYLE[tone ?? "neutral"];
+  const m = TONE_STYLE[(tone ?? "neutral") as keyof typeof TONE_STYLE];
   return (
     <span
       className={className}

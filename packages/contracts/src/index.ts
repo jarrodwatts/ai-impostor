@@ -29,8 +29,7 @@ export const ESCROW_ADDRESS: `0x${string}` =
   "0x0000000000000000000000000000000000000000";
 
 /**
- * ImpostorEscrow ABI.
- * PLACEHOLDER — regenerated from `forge build` artifacts in M2. Kept empty (but
- * typed `as const`) so web/server type-check against the package shape today.
+ * ImpostorEscrow ABI — generated from the Foundry build artifact in M2.
+ * Regenerate `src/abi.ts` after any contract change (see M2 ABI-generation step).
  */
-export const escrowAbi = [] as const;
+export { escrowAbi } from "./abi.js";
