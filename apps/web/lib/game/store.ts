@@ -40,6 +40,20 @@ export type GameState = {
   viewerStatus: ViewerStatus;
   connected: boolean;
 
+  // on-chain demo lobby (pre-game only; all fields are safe before the game
+  // starts — buyInWei is the fixed B and humansSeated/minHumans is lobby-fill
+  // progress, NOT a human/AI split of a live game). Cleared/ignored once the
+  // game begins; carries no mid-game leak.
+  lobby: {
+    gameId: string;
+    escrowAddress: string;
+    buyInWei: string;
+    minHumans: number;
+    humansSeated: number;
+    countdownEndsAt?: number;
+  } | null;
+  joinRejectedReason: string | null;
+
   // table (PublicSeat carries NO isAI — see shared/events.ts)
   roster: PublicSeat[];
 
@@ -81,6 +95,8 @@ export const INITIAL_STATE: GameState = {
   mySeatId: null,
   viewerStatus: "alive",
   connected: false,
+  lobby: null,
+  joinRejectedReason: null,
   roster: [],
   phase: "LOBBY_FORMING",
   round: 0,
@@ -107,6 +123,29 @@ export const INITIAL_STATE: GameState = {
  */
 export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
   switch (ev.t) {
+    // On-chain demo lobby: the single open game this client may pay into. All
+    // fields are pre-game-safe (no human/AI split). Persist for the join CTA.
+    case "lobby_open":
+      return {
+        ...state,
+        lobby: {
+          gameId: ev.gameId,
+          escrowAddress: ev.escrowAddress,
+          buyInWei: ev.buyInWei,
+          minHumans: ev.minHumans,
+          humansSeated: ev.humansSeated,
+          countdownEndsAt: ev.countdownEndsAt,
+        },
+        joinRejectedReason: null,
+        phase: "LOBBY_FORMING",
+        lastSeq: ev.seq,
+      };
+
+    // The server refused the join (e.g. game full / payment not seen). Surface
+    // the reason so the join screen can show it + offer a retry.
+    case "join_rejected":
+      return { ...state, joinRejectedReason: ev.reason, lastSeq: ev.seq };
+
     case "game_started":
       return {
         ...state,
@@ -119,6 +158,7 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         round: 0,
         gameOver: false,
         settlement: null,
+        joinRejectedReason: null,
         lastSeq: ev.seq,
       };
 
@@ -236,10 +276,27 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
       };
     }
 
+    case "lobby_state": {
+      // Lobby-fill progress for the open game (seatsFilled is a total — NOT a
+      // human/AI split). Mirror it into the lobby card's humansSeated + countdown
+      // so the join screen reflects seating; ignored if no lobby is open.
+      if (!state.lobby) return { ...state, lastSeq: ev.seq };
+      return {
+        ...state,
+        lobby: {
+          ...state.lobby,
+          humansSeated: ev.seatsFilled,
+          countdownEndsAt: ev.countdownEndsAt ?? state.lobby.countdownEndsAt,
+        },
+        phase: ev.phase,
+        lastSeq: ev.seq,
+      };
+    }
+
     case "error":
       return { ...state, voteRejectedReason: ev.message };
 
-    // queue_state / lobby_state / resync handled by their own screens/stores
+    // queue_state / resync handled by their own screens/stores
     default:
       return state;
   }
@@ -249,6 +306,8 @@ type GameStore = GameState & {
   setConnected: (connected: boolean) => void;
   /** Record this viewer's own pending vote target (optimistic; lock on ack). */
   setMyVote: (seatId: string) => void;
+  /** Clear a prior join rejection so the join CTA can be retried. */
+  clearJoinRejected: () => void;
   apply: (ev: ServerEvent) => void;
   reset: () => void;
 };
@@ -258,6 +317,7 @@ export const useGameStore = create<GameStore>((set) => ({
   setConnected: (connected) => set({ connected }),
   setMyVote: (seatId) =>
     set((s) => (s.hasVoted ? s : { ...s, myVote: seatId })),
+  clearJoinRejected: () => set({ joinRejectedReason: null }),
   apply: (ev) => set((s) => applyServerEvent(s, ev)),
   reset: () => set({ ...INITIAL_STATE }),
 }));

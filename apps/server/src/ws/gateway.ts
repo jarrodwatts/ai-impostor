@@ -10,6 +10,10 @@ import { Game, BUY_IN_WEI, type GameEmitter, type SeatSpec } from "../game/Game.
 import type { LlmClient } from "../ai/llm.js";
 import type { Repositories } from "../persistence/types.js";
 import { MatchmakingQueue } from "../matchmaking/queue.js";
+import { DemoLobby, type LobbyHost } from "../matchmaking/demoLobby.js";
+import type { ChainService } from "../chain/ChainService.js";
+import { signSettlement } from "../settlement/settle.js";
+import type { BuiltSettlement } from "../settlement/settle.js";
 import {
   projectStateForRecipient,
   type RecipientRole,
@@ -36,6 +40,8 @@ interface ConnContext {
   /** Set once the connection is seated in a game. */
   gameId?: string;
   seatId?: string;
+  /** Wallet address (demo flow). */
+  address?: string;
 }
 
 /** Per-game routing record. */
@@ -52,26 +58,54 @@ export interface GatewayOptions {
   scheduler?: Scheduler;
   /** Optional auth hook; default accepts any non-empty token. */
   authenticate?: (token: string) => { userId: string } | null;
+  /**
+   * On-chain demo deps. When provided, the gateway runs the single-shared-open-
+   * game demo flow (request_join / confirm_payment) instead of the queue-only
+   * path, and wires real settlement submission. The serverSignerKey EIP712-signs
+   * settlements; it is never logged.
+   */
+  chain?: ChainService;
+  serverSignerKey?: `0x${string}`;
+  /**
+   * Existing HTTP server to attach the WS upgrade handler to (so the faucet +
+   * /healthz share the port). When omitted the gateway opens its own ws server
+   * on `port` (used by tests).
+   */
+  httpServer?: import("node:http").Server;
 }
 
-export class Gateway {
+export class Gateway implements LobbyHost {
   private wss: WebSocketServer | null = null;
   private conns = new Map<string, ConnContext>();
   private rooms = new Map<string, GameRoom>();
   private queue: MatchmakingQueue;
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private opts: GatewayOptions;
+  private demoLobby: DemoLobby | null = null;
 
   constructor(opts: GatewayOptions) {
     this.opts = opts;
     this.queue = new MatchmakingQueue();
+    if (opts.chain) {
+      this.demoLobby = new DemoLobby(opts.chain, this, opts.scheduler);
+    }
+  }
+
+  /** True when running the on-chain demo flow (request_join/confirm_payment). */
+  get demoMode(): boolean {
+    return this.demoLobby !== null;
   }
 
   listen(): void {
-    const port = this.opts.port ?? 8080;
-    this.wss = new WebSocketServer({ port });
+    if (this.opts.httpServer) {
+      this.wss = new WebSocketServer({ server: this.opts.httpServer });
+    } else {
+      const port = this.opts.port ?? 8080;
+      this.wss = new WebSocketServer({ port });
+    }
     this.wss.on("connection", (ws, req) => this.onConnection(ws, req?.url));
     this.heartbeat = setInterval(() => this.pingAll(), config.HEARTBEAT_MS);
+    if (this.demoLobby) void this.demoLobby.init();
   }
 
   close(): void {
@@ -108,6 +142,8 @@ export class Gateway {
 
   private onClose(ctx: ConnContext): void {
     this.conns.delete(ctx.connId);
+    // Pre-start: drop them from the open demo lobby (re-indexes remaining seats).
+    this.demoLobby?.onDisconnect(ctx.connId);
     // Grace window / auto-eliminate is wired in M5/M6; here we just drop the
     // routing entry so broadcasts stop targeting a dead socket.
     if (ctx.gameId) {
@@ -155,6 +191,20 @@ export class Gateway {
         break;
       case "leave_queue":
         void this.queue.leave(ctx.connId);
+        break;
+      case "request_join":
+        ctx.address = ev.address;
+        if (this.demoLobby) void this.demoLobby.requestJoin(ctx.connId, ev.address);
+        break;
+      case "confirm_payment":
+        ctx.address = ev.address;
+        if (this.demoLobby)
+          void this.demoLobby.confirmPayment(
+            ctx.connId,
+            ev.gameId,
+            ev.address,
+            ev.txHash,
+          );
         break;
       case "send_message":
         this.routeChat(ctx, ev.clientMsgId, ev.text);
@@ -224,6 +274,66 @@ export class Gateway {
           c.gameId = gameId;
           c.seatId = spec.seatId;
         }
+      }
+    }
+
+    await game.start();
+  }
+
+  // ── LobbyHost impl (on-chain demo flow) ─────────────────────────────
+  sendToConn(connId: string, ev: ServerEvent): void {
+    const ctx = this.conns.get(connId);
+    if (ctx) this.send(ctx, ev);
+  }
+
+  /**
+   * Start a locked demo game: build the room, bind human seats, construct the
+   * Game with the configured buy-in + an on-chain settle hook (sign EIP712 +
+   * submit settle()), and run the round loop. The settle hook's tx hash is woven
+   * into the broadcast settlement reveal by the Game.
+   */
+  async startGame(
+    gameId: string,
+    gameIdNum: bigint,
+    seatSpecs: SeatSpec[],
+    humanConnBySeat: Map<string, string>,
+  ): Promise<void> {
+    const room: GameRoom = { game: undefined as unknown as Game, seatConns: new Map() };
+    const emitter: GameEmitter = {
+      broadcast: (ev) => this.broadcastToRoom(gameId, ev),
+      toSeat: (seatId, ev) => this.sendToSeat(gameId, seatId, ev),
+    };
+
+    const chain = this.opts.chain;
+    const signerKey = this.opts.serverSignerKey;
+    const settle = chain && signerKey
+      ? async (built: BuiltSettlement) => {
+          const sig = await signSettlement(
+            built.onchain,
+            signerKey,
+            chain.escrowAddress as `0x${string}`,
+          );
+          return chain.submitSettlement(built.onchain, sig);
+        }
+      : undefined;
+
+    const game = new Game(gameId, gameIdNum, seatSpecs, {
+      repos: this.opts.repos,
+      llm: this.opts.llm,
+      emitter,
+      buyInWei: config.BUY_IN_WEI,
+      ...(settle ? { settle } : {}),
+      ...(this.opts.scheduler ? { scheduler: this.opts.scheduler } : {}),
+    });
+    room.game = game;
+    this.rooms.set(gameId, room);
+
+    for (const [seatId, connId] of humanConnBySeat) {
+      room.seatConns.set(seatId, connId);
+      const c = this.conns.get(connId);
+      if (c) {
+        c.gameId = gameId;
+        c.seatId = seatId;
       }
     }
 

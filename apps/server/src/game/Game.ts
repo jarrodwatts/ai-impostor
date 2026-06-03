@@ -54,6 +54,15 @@ export interface GameDeps {
   scheduler?: Scheduler;
   /** Deterministic seed for identity/persona/cadence (sims/tests). */
   seed?: number;
+  /** Human buy-in (wei). Defaults to BUY_IN_WEI; the demo lobby sets the configured value. */
+  buyInWei?: bigint;
+  /**
+   * Optional on-chain settlement hook. If provided, the Game awaits it at game
+   * end to sign + submit the settlement and obtain a tx hash, which is woven
+   * into the broadcast settlement reveal. Absent (tests/sim) → reveal txHash is
+   * null and nothing touches a chain.
+   */
+  settle?: (built: BuiltSettlement) => Promise<{ txHash: string | null }>;
 }
 
 export class Game implements GameBridge {
@@ -78,7 +87,7 @@ export class Game implements GameBridge {
     const rng = makeRng(seed);
     this.rngPick = () => rng.next();
 
-    const buyInWei = BigInt(0); // overridden below via config-driven buy-in
+    const buyInWei = deps.buyInWei ?? BUY_IN_WEI;
     const humanCount = seatSpecs.filter((s) => !s.isAI).length;
 
     // Assign uniform identities to all seats (human + AI alike).
@@ -108,7 +117,7 @@ export class Game implements GameBridge {
       seatOrder.push(spec.seatId);
     });
 
-    const startPool = BigInt(humanCount) * BUY_IN_WEI;
+    const startPool = BigInt(humanCount) * buyInWei;
 
     this.state = {
       gameId,
@@ -119,14 +128,13 @@ export class Game implements GameBridge {
       seats,
       seatOrder,
       votes: new Map(),
-      buyInWei: BUY_IN_WEI,
+      buyInWei,
       startPool,
       pool: startPool,
       houseWei: 0n,
       outcome: null,
       seq: 0,
     };
-    void buyInWei;
 
     this.runner = new AgentRunner(this, deps.llm, this.scheduler, seed);
   }
@@ -350,6 +358,27 @@ export class Game implements GameBridge {
       this.state.pool.toString(),
       built.onchain.houseAmount.toString(),
     );
+
+    // On-chain settlement (live demo). If a settle hook is wired, sign + submit
+    // and weave the resulting tx hash into the reveal. Without it (tests/sim),
+    // txHash stays null and nothing touches a chain. Submission failures are
+    // logged but never block the broadcast/persist — the off-chain result stands.
+    this.deps.emitter.onSettlement?.(built);
+    let txHash: string | null = null;
+    if (this.deps.settle) {
+      try {
+        const res = await this.deps.settle(built);
+        txHash = res.txHash;
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[game ${this.state.gameId}] settlement submission failed:`,
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+    if (txHash) built.reveal.txHash = txHash;
+
     await this.deps.repos.settlements.saveSettlement({
       gameId: this.state.gameId,
       gameIdNum: this.state.gameIdNum.toString(),
@@ -358,11 +387,10 @@ export class Game implements GameBridge {
       houseWei: built.onchain.houseAmount.toString(),
       resultRoot: built.onchain.resultRoot,
       signature: null,
-      txHash: null,
+      txHash,
       createdAt: Date.now(),
     });
 
-    this.deps.emitter.onSettlement?.(built);
     this.deps.emitter.broadcast({
       t: "settlement",
       seq: this.nextSeq(),

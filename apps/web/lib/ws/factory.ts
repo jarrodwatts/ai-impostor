@@ -29,6 +29,28 @@ export function isLiveSocket(): boolean {
 }
 
 /**
+ * HTTP(S) base for the server's REST endpoints (faucet, healthz). The server
+ * serves HTTP on the SAME host as the WebSocket, so we derive it from
+ * NEXT_PUBLIC_WS_URL: `wss://host` → `https://host`, `ws://host` → `http://host`
+ * (any path/query is stripped). Falls back to same-origin in the browser when
+ * no WS URL is configured (mock/demo).
+ */
+export function httpBase(): string | undefined {
+  const ws = liveWsUrl();
+  if (ws) {
+    try {
+      const u = new URL(ws);
+      u.protocol = u.protocol === "wss:" ? "https:" : "http:";
+      return `${u.protocol}//${u.host}`;
+    } catch {
+      // fall through to same-origin
+    }
+  }
+  if (typeof window !== "undefined") return window.location.origin;
+  return undefined;
+}
+
+/**
  * Build the GameSocket for a /play session. Optionally pass a per-game suffix
  * (e.g. `?gameId=...`) appended to the configured base URL for the live path;
  * the mock ignores it (it scripts its own demo game).

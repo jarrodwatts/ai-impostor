@@ -27,8 +27,11 @@ import {
   type ServerEventHandler,
 } from "./game-socket";
 
-const GAME_ID = "demo-4471";
+const GAME_ID = "4471"; // numeric so the join CTA's BigInt(gameId) is valid
 const MY_SEAT = "p1";
+const MOCK_BUY_IN_WEI = "5000000000000000000"; // 5 MON
+const MOCK_ESCROW = "0x25c4966C497F5E633a110314Dc284942C284ebc1";
+const MOCK_MIN_HUMANS = 6;
 
 // Compressed demo timings (ms).
 const PROMPT_MS = 3_500;
@@ -132,16 +135,37 @@ export class MockGameSocket implements GameSocket {
   private seq = 0;
   private started = false;
   private hasVoted = false;
+  private gameStarted = false;
 
   connect(): void {
     if (this.started) return;
     this.started = true;
     this.emitter.emitConnection(true);
-    this.runScript();
+    // Open the on-chain demo lobby so the new join UI has a target. The scripted
+    // game is gated behind the join handshake (request_join → pay → confirm),
+    // mirroring the live server — a no-op "join" still drives a full game.
+    this.timers.push(
+      setTimeout(() => {
+        if (this.started) this.emitLobbyOpen();
+      }, 150),
+    );
+  }
+
+  private emitLobbyOpen(seated = 1): void {
+    this.emit({
+      t: "lobby_open",
+      seq: this.next(),
+      gameId: GAME_ID,
+      escrowAddress: MOCK_ESCROW,
+      buyInWei: MOCK_BUY_IN_WEI,
+      minHumans: MOCK_MIN_HUMANS,
+      humansSeated: seated,
+    });
   }
 
   disconnect(): void {
     this.started = false;
+    this.gameStarted = false;
     for (const t of this.timers) clearTimeout(t);
     this.timers = [];
     this.emitter.emitConnection(false);
@@ -299,6 +323,24 @@ export class MockGameSocket implements GameSocket {
   }
 
   send(ev: import("@ai-impostor/shared").ClientEvent): void {
+    // On-chain demo handshake (mock): re-advertise the lobby on request_join;
+    // on confirm_payment, "seat" the player and kick off the scripted game. The
+    // mock accepts any tx hash (no real chain), so the join CTA proceeds.
+    if (ev.t === "request_join") {
+      this.emitLobbyOpen(1);
+      return;
+    }
+    if (ev.t === "confirm_payment") {
+      if (this.gameStarted) return;
+      this.gameStarted = true;
+      // Briefly reflect seating, then start the scripted game.
+      this.timers.push(
+        setTimeout(() => {
+          if (this.started) this.runScript();
+        }, 600),
+      );
+      return;
+    }
     // The mock only needs to react to votes (secret ballot): ack the first cast,
     // reject any recast. It never echoes the target to anyone.
     if (ev.t === "cast_vote") {

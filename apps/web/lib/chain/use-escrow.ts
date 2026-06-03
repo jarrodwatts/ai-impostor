@@ -1,54 +1,53 @@
 "use client";
 
 /**
- * Wallet hooks for the escrow buy-in.
+ * Wallet hooks for the escrow buy-in (LIVE on Monad testnet).
  *
- * - `useBuyIn()` reads the on-chain `buyIn()` (queue screen). Falls back to a
- *   mock value when no contract is deployed (M4: ESCROW_ADDRESS is the zero
- *   address until M2), so the queue screen renders without a live chain.
- * - `useJoin()` wraps a wagmi write of the payable `join(gameId)` buy-in. Wired
- *   against monadTestnet; need not execute against a live chain in M4 (M5).
+ * - `useBuyIn()` reads the on-chain `buyIn()` (display fallback for the buy-in
+ *   amount when the server's lobby_open hasn't arrived yet).
+ * - `useJoin()` wraps the payable `join(gameId)` write against a given escrow
+ *   address (from the server's `lobby_open`) and exposes the tx hash so the
+ *   caller can wait for the receipt before confirming payment to the server.
  *
- * Uses the LOCAL ABI fragment (lib/chain/escrow.ts) — see its TODO re: M2.
+ * Uses the full generated `escrowAbi` from @ai-impostor/contracts.
  */
 import { useCallback } from "react";
 import { useReadContract, useWriteContract } from "wagmi";
 import { monadTestnet } from "@/lib/wagmi";
-import { escrowAbiFragment, escrowAddress } from "./escrow";
-
-const ZERO = "0x0000000000000000000000000000000000000000";
-/** Demo buy-in shown when no contract is deployed yet (5 MON). */
-const MOCK_BUY_IN_WEI = 5_000_000_000_000_000_000n;
+import { escrowAbi, escrowAddress } from "./escrow";
 
 export function useBuyIn() {
-  const deployed = escrowAddress.toLowerCase() !== ZERO;
   const query = useReadContract({
-    abi: escrowAbiFragment,
+    abi: escrowAbi,
     address: escrowAddress,
     functionName: "buyIn",
     chainId: monadTestnet.id,
-    query: { enabled: deployed },
   });
 
-  const buyInWei = deployed
-    ? ((query.data as bigint | undefined) ?? null)
-    : MOCK_BUY_IN_WEI;
-
   return {
-    buyInWei,
-    isMock: !deployed,
-    isLoading: deployed ? query.isLoading : false,
+    buyInWei: (query.data as bigint | undefined) ?? null,
+    isLoading: query.isLoading,
   };
 }
 
 export function useJoin() {
   const { writeContractAsync, isPending, error } = useWriteContract();
 
+  /**
+   * Send the payable `join(gameId)` buy-in to `address` with `value: valueWei`.
+   * Returns the tx hash; the caller waits for the receipt then confirms to the
+   * server. `address` defaults to the deployed escrow but should be the one
+   * from `lobby_open`.
+   */
   const join = useCallback(
-    async (gameId: bigint, valueWei: bigint) => {
+    async (
+      gameId: bigint,
+      valueWei: bigint,
+      address: `0x${string}` = escrowAddress,
+    ) => {
       return writeContractAsync({
-        abi: escrowAbiFragment,
-        address: escrowAddress,
+        abi: escrowAbi,
+        address,
         functionName: "join",
         args: [gameId],
         value: valueWei,

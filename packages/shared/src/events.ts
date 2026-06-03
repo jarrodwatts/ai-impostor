@@ -71,6 +71,25 @@ export const ServerEvent = z.discriminatedUnion("t", [
     mySeatId: z.string().nullable(),
     countdownEndsAt: z.number().optional(),
   }),
+  // On-chain demo lobby: the single shared open game a client may pay into.
+  // Carries the absolute buyInWei (safe pre-game: known fixed B, no live pool)
+  // and humansSeated/minHumans (lobby-fill progress — NOT an AI/human split of a
+  // live game; AI seats don't exist until the game starts).
+  z.object({
+    t: z.literal("lobby_open"),
+    seq: z.number(),
+    gameId: z.string(), // numeric on-chain gameId, stringified
+    escrowAddress: z.string(),
+    buyInWei: z.string(),
+    minHumans: z.number().int().positive(),
+    humansSeated: z.number().int().nonnegative(),
+    countdownEndsAt: z.number().optional(),
+  }),
+  z.object({
+    t: z.literal("join_rejected"),
+    seq: z.number(),
+    reason: z.string(),
+  }),
   z.object({
     t: z.literal("game_started"),
     seq: z.number(),
@@ -160,6 +179,15 @@ export type ServerEvent = z.infer<typeof ServerEvent>;
 export const ClientEvent = z.discriminatedUnion("t", [
   z.object({ t: z.literal("join_queue"), buyInTxRef: z.string() }),
   z.object({ t: z.literal("leave_queue") }),
+  // On-chain demo handshake: ask to join the current open game (server replies
+  // lobby_open), then confirm the on-chain buy-in payment by tx hash.
+  z.object({ t: z.literal("request_join"), address: z.string() }),
+  z.object({
+    t: z.literal("confirm_payment"),
+    gameId: z.string(),
+    address: z.string(),
+    txHash: z.string(),
+  }),
   z.object({ t: z.literal("send_message"), clientMsgId: z.string(), text: z.string() }),
   z.object({ t: z.literal("set_typing"), isTyping: z.boolean() }),
   z.object({ t: z.literal("cast_vote"), round: z.number(), targetSeatId: z.string() }),

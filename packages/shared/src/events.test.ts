@@ -34,6 +34,17 @@ const serverSamples: Record<string, ServerEvent> = {
     mySeatId: null,
     countdownEndsAt: 1700000000000,
   },
+  lobby_open: {
+    t: "lobby_open",
+    seq: 21,
+    gameId: "123456",
+    escrowAddress: "0x25c4966C497F5E633a110314Dc284942C284ebc1",
+    buyInWei: "10000000000000000",
+    minHumans: 2,
+    humansSeated: 1,
+    countdownEndsAt: 1700000000000,
+  },
+  join_rejected: { t: "join_rejected", seq: 22, reason: "payment_not_found" },
   game_started: {
     t: "game_started",
     seq: 3,
@@ -99,6 +110,13 @@ const clientSamples: Record<string, ClientEvent> = {
   send_message: { t: "send_message", clientMsgId: "c1", text: "hi" },
   set_typing: { t: "set_typing", isTyping: false },
   cast_vote: { t: "cast_vote", round: 1, targetSeatId: "s2" },
+  request_join: { t: "request_join", address: "0xb714a503E0623C4afF73235b1F8C3fF93e513B8A" },
+  confirm_payment: {
+    t: "confirm_payment",
+    gameId: "123456",
+    address: "0xb714a503E0623C4afF73235b1F8C3fF93e513B8A",
+    txHash: "0xdeadbeef",
+  },
   heartbeat: { t: "heartbeat" },
   resync_request: { t: "resync_request", lastSeq: 12 },
 };

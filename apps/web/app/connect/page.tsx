@@ -1,29 +1,20 @@
 "use client";
 
 /**
- * Connect screen (ConnectDesktop/ConnectMobile). Connects a Monad wallet via
- * Reown AppKit; once connected, advances to /faucet (balance check) then queue.
+ * Connect screen (ConnectDesktop/ConnectMobile). Connects a Monad wallet via the
+ * injected (MetaMask) connector — no WalletConnect/Reown projectId. Once
+ * connected, advances to /faucet (balance check) then queue.
  */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { Brand, Btn, Eyebrow, C, DISP, SANS } from "@/components/primitives";
+import { Brand, Eyebrow, C, DISP, SANS } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
-import { useAppKit } from "@reown/appkit/react";
-
-function WalletGlyph() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-      <rect x="2.5" y="5.5" width="19" height="14" rx="3" stroke="currentColor" strokeWidth="1.7" />
-      <path d="M2.5 9h19" stroke="currentColor" strokeWidth="1.7" />
-      <circle cx="17" cy="14" r="1.4" fill="currentColor" />
-    </svg>
-  );
-}
+import { WalletButton } from "@/components/chrome/wallet-button";
+import { FaucetButton } from "@/components/chrome/faucet-button";
 
 export default function ConnectPage() {
   const router = useRouter();
-  const { open } = useAppKit();
   const { isConnected } = useAccount();
 
   useEffect(() => {
@@ -60,16 +51,17 @@ export default function ConnectPage() {
           >
             <Eyebrow color={C.faint}>CHOOSE A WALLET</Eyebrow>
             <div className="mt-[18px] flex flex-col gap-[10px]">
-              <Btn variant="secondary" full icon={<WalletGlyph />} onClick={() => open()}>
-                CONNECT MONAD WALLET
-              </Btn>
+              <WalletButton label="CONNECT MONAD WALLET" variant="secondary" size="default" full />
             </div>
             <div
               className="mt-[18px] border-t pt-4"
               style={{ borderColor: C.lineSoft, font: `400 12px/1.5 ${SANS}`, color: C.faint }}
             >
-              New to Monad testnet? You&apos;ll need a little test MON to play —{" "}
-              <span style={{ color: C.purple }}>grab some free from the faucet</span>.
+              New to Monad testnet? You&apos;ll need a little test MON to play —
+              grab some free from the faucet:
+            </div>
+            <div className="mt-3">
+              <FaucetButton variant="tertiary" size="sm" label="GET TEST MON" full />
             </div>
           </div>
         </div>

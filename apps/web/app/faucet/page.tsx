@@ -11,6 +11,7 @@ import { useAccount, useBalance } from "wagmi";
 import { Brand, Btn, Eyebrow, C, DISP, SANS } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
 import { WalletChip } from "@/components/chrome/wallet-button";
+import { FaucetButton } from "@/components/chrome/faucet-button";
 import { useBuyIn, formatMon } from "@/lib/chain/use-escrow";
 import { monadTestnet } from "@/lib/wagmi";
 
@@ -74,14 +75,15 @@ export default function FaucetPage() {
             ))}
           </div>
 
-          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+          <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <FaucetButton variant="primary" size="default" label="GET TEST MON" />
             <a href={FAUCET_URL} target="_blank" rel="noopener noreferrer">
-              <Btn variant="primary" style={{ height: 50, padding: "0 28px" }}>
+              <Btn variant="tertiary" style={{ height: 50, padding: "0 24px" }}>
                 OPEN TESTNET FAUCET
               </Btn>
             </a>
             <Btn variant="tertiary" style={{ height: 50, padding: "0 24px" }} onClick={onRefresh}>
-              I ALREADY HAVE MON — REFRESH
+              REFRESH BALANCE
             </Btn>
           </div>
           {funded && (

@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * Wallet connect button + connected-address chip, backed by Reown AppKit +
- * wagmi. Opens the AppKit modal; when connected shows the short address chip
- * from the design screens (green dot + 0x… short form).
+ * Wallet connect button + connected-address chip, backed by plain wagmi with the
+ * injected (MetaMask) connector — NO WalletConnect / Reown projectId. Connects
+ * via `useConnect` against the injected connector; when connected shows the short
+ * address chip. If connected on the wrong chain, offers to switch to Monad
+ * testnet via `useSwitchChain`.
  */
-import { useAppKit } from "@reown/appkit/react";
-import { useAccount } from "wagmi";
+import { useConnect, useAccount, useDisconnect, useSwitchChain } from "wagmi";
+import { injected } from "wagmi/connectors";
 import { Btn, type BtnProps, MONO } from "@/components/primitives";
+import { monadTestnet } from "@/lib/wagmi";
 
 function shortAddr(addr: string): string {
   return `${addr.slice(0, 4)}…${addr.slice(-4)}`;
@@ -24,14 +27,37 @@ export function WalletButton({
   size?: BtnProps["size"];
   full?: boolean;
 }) {
-  const { open } = useAppKit();
-  const { address, isConnected } = useAccount();
+  const { connect, connectors, isPending } = useConnect();
+  const { address, isConnected, chainId } = useAccount();
+  const { disconnect } = useDisconnect();
+  const { switchChain, isPending: isSwitching } = useSwitchChain();
+
+  const onConnect = () => {
+    const connector =
+      connectors.find((c) => c.type === "injected") ?? connectors[0];
+    connect({ connector: connector ?? injected() });
+  };
 
   if (isConnected && address) {
+    const wrongChain = chainId !== monadTestnet.id;
+    if (wrongChain) {
+      return (
+        <Btn
+          variant="berry"
+          size={size}
+          full={full}
+          disabled={isSwitching}
+          onClick={() => switchChain({ chainId: monadTestnet.id })}
+        >
+          {isSwitching ? "SWITCHING…" : "SWITCH TO MONAD"}
+        </Btn>
+      );
+    }
     return (
       <button
         type="button"
-        onClick={() => open()}
+        onClick={() => disconnect()}
+        title="Disconnect"
         className="flex items-center gap-[7px] rounded-full px-3 py-[7px]"
         style={{
           background: "rgba(22,163,74,0.12)",
@@ -49,8 +75,14 @@ export function WalletButton({
   }
 
   return (
-    <Btn variant={variant} size={size} full={full} onClick={() => open()}>
-      {label}
+    <Btn
+      variant={variant}
+      size={size}
+      full={full}
+      disabled={isPending}
+      onClick={onConnect}
+    >
+      {isPending ? "CONNECTING…" : label}
     </Btn>
   );
 }
