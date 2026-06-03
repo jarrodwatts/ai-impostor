@@ -36,6 +36,30 @@ export const SETTLEMENT_EIP712_TYPES = {
 
 export const SETTLEMENT_PRIMARY_TYPE = "Settlement" as const;
 
+/**
+ * Derive the canonical EIP712 type string from {@link SETTLEMENT_EIP712_TYPES}.
+ * For the single-struct `Settlement` type this yields exactly:
+ *   `Settlement(uint256 gameId,address[] survivors,uint256[] payouts,uint256 houseAmount,bytes32 resultRoot)`
+ *
+ * This is the precise string the Solidity contract keccak256-hashes into
+ * SETTLEMENT_TYPEHASH. A cross-language test pins the two together — see
+ * settlement.test.ts and contracts/src/ImpostorEscrow.sol (SETTLEMENT_TYPEHASH).
+ * Any reorder/rename/retype of fields here MUST be mirrored in the Solidity
+ * struct, or the pin test fails (release blocker).
+ */
+export function canonicalSettlementTypeString(): string {
+  const fields = SETTLEMENT_EIP712_TYPES[SETTLEMENT_PRIMARY_TYPE]
+    .map((f) => `${f.type} ${f.name}`)
+    .join(",");
+  return `${SETTLEMENT_PRIMARY_TYPE}(${fields})`;
+}
+
+/**
+ * The canonical EIP712 type string, precomputed. Exported so server/web can
+ * reference the contract's signing type without importing the Solidity source.
+ */
+export const SETTLEMENT_TYPE_STRING = canonicalSettlementTypeString();
+
 export function settlementDomain(chainId: number, verifyingContract: `0x${string}`) {
   return {
     name: "AI Impostor",

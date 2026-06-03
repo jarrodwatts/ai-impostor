@@ -38,8 +38,31 @@ export type PublicSeat = z.infer<typeof PublicSeat>;
 export const ViewerStatus = z.enum(["alive", "spectator"]);
 export type ViewerStatus = z.infer<typeof ViewerStatus>;
 
+/**
+ * Client-visible mirror of server tunables (timings + lobby sizing). The server
+ * is authoritative; this is a small read-only DTO so the web can size timers /
+ * progress bars without hard-coding magic numbers. Deliberately carries NO
+ * aiCount split — `minPlayers`/`maxSeats` are lobby caps, not human/AI counts.
+ */
+export const GameConfig = z.object({
+  buyInWei: z.string(), // stringified wei; absolute MON, safe pre-game (no live pool)
+  minPlayers: z.number().int().positive(), // humans required to start a countdown
+  maxSeats: z.number().int().positive(), // total seats (humans + AI) in a game
+  countdownMs: z.number().int().nonnegative(),
+  discussionMs: z.number().int().nonnegative(),
+  voteWindowMs: z.number().int().nonnegative(),
+});
+export type GameConfig = z.infer<typeof GameConfig>;
+
 // ── Server → Client ────────────────────────────────────────────────
 export const ServerEvent = z.discriminatedUnion("t", [
+  z.object({
+    t: z.literal("queue_state"),
+    seq: z.number(),
+    position: z.number().int().nonnegative(), // 0 = front of FIFO
+    waiting: z.number().int().nonnegative(), // total humans queued (NOT a game's AI/human split)
+    config: GameConfig.optional(),
+  }),
   z.object({
     t: z.literal("lobby_state"),
     seq: z.number(),

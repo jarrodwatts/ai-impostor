@@ -1,10 +1,24 @@
 # Progress
 
 ## Current state
-- **Milestone:** M0 (scaffold) **complete**. Next up: **M1 — shared foundations** (the gate for all
-  parallel subsystem work). Start by freezing `packages/shared` and adding the cross-language EIP712
-  typehash test.
-- **Repo:** pnpm monorepo at `/Users/jarrod/ai-impostor`, git initialized, single root lockfile.
+- **Milestone:** M0 + **M1 (shared foundations) complete & reviewed (APPROVE)**. The gate is open —
+  next up: **M2 (contracts) ∥ M3 (server+AI) ∥ M4 (web screens)** run in parallel.
+- **Repo:** pnpm monorepo at `/Users/jarrod/ai-impostor`, git on `main`, single root lockfile.
+
+## M1 delivered (reviewed: APPROVE)
+- `packages/shared`: finalized WS event-schema; added additive `GameConfig` DTO + `queue_state`
+  event (anti-leak clean); `canonicalSettlementTypeString()` + `SETTLEMENT_TYPE_STRING`; 33 vitest
+  tests (every ServerEvent/ClientEvent variant round-trips, exhaustive-by-construction; conservation
+  cases; **cross-language EIP712 typehash pin** vs the Solidity literal). Test files excluded from
+  build.
+- `packages/contracts`: mirrored `SETTLEMENT_TYPE_STRING`; chain config final; ABI/address remain
+  M2 placeholders.
+- `apps/web`: `colors_and_type.css` Monad tokens → Tailwind v4 `@theme` (shadcn semantic tokens
+  remapped onto the dark monapp palette); fonts (Britti Sans local + Inter/Roboto Mono via
+  next/font); primitive library in `components/primitives/` (Btn/Avatar/PotHealth/Timer/RoundPill/
+  Tag/ChatMsg/TypingRow/GridBG/Eyebrow/Brand) recreated byte-faithfully from `screens-shared.jsx`;
+  `/styleguide` route. `turbopack.root` repointed to monorepo root (app-scoped root broke `next build`).
+- **Verified centrally:** `pnpm -r build` + `-r typecheck` + `-r test` green; `forge test` green.
 
 ## What exists (M0)
 - `apps/web` — Next 16 (App Router, Turbopack) + React 19 + Tailwind v4 + shadcn (new-york,
@@ -63,8 +77,23 @@ server+Postgres+Redis→Railway, contracts→Monad testnet. See `standards.md` f
 - Chose: single `/play/[gameId]` phase-router off authoritative server state.
 - Rationale: avoids tearing down the WS/anti-leak guards on navigation; server-driven phase only.
 
+### Decision: orchestration adapted to this harness (no per-agent worktrees)
+- Options: per-implementer git worktrees with orchestrator branch-merge (skill default) · parallel
+  implementers on `main` with disjoint path ownership + central verify/commit.
+- Chose: **disjoint-path-on-main**. Implementers get strict non-overlapping paths, are told not to
+  touch deps/lockfile or commit; the orchestrator runs the full verify suite then commits ("merge"),
+  dispatches the reviewer, and updates progress.
+- Rationale: worktree-isolated agent commits can't be reliably merged back in this harness (branch
+  not controllable). Disjoint paths give the same conflict-safety; central verify+commit is the merge.
+- Trade-offs: parallel tracks must be path-disjoint (they are, per milestone); no per-agent commit
+  granularity.
+
 ## Known limitations / watch items
 - Next 16 has breaking changes — implementers must read `apps/web/node_modules/next/dist/docs/`.
+- **M4 prep (from M1 review, minor):** `apps/web/tsconfig.json` doesn't extend `tsconfig.base.json`
+  and lacks `noUncheckedIndexedAccess` (a standards gate). Align at the start of M4 before screen
+  code piles up (forcing it now risks churn in scaffolded code). Also: shared `*.test.ts` aren't
+  covered by `tsc --noEmit` (excluded from build config) — acceptable; runtime suite still guards.
 - M5 seam risk: `Settlement`/EIP712 typehash + rounding/dust agreement (pin in M1).
 - 4-AI bloc balance + disconnect-penalty fairness are playtest tunables (`BLOC_COHESION`,
   `DISCONNECT_PENALTY_WAIVER`).

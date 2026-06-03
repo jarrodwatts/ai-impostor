@@ -1,0 +1,64 @@
+/* =========================================================
+   AI Impostor — Monad design tokens (dark "monapp" palette)
+   Exact values mirrored from design-reference/project/screens-shared.jsx `C`
+   and colors_and_type.css. These are the single source of truth for the
+   raw palette; globals.css maps them into Tailwind v4 @theme and onto the
+   shadcn semantic tokens.
+   ========================================================= */
+
+:root {
+  /* ---------- Surfaces ---------- */
+  --mon-bg:        #0E100F; /* primary dark canvas */
+  --mon-bg-raise:  #121212; /* raised panels */
+  --mon-card:      #161616; /* cards */
+  --mon-card-hi:   #1C1C1E; /* elevated card */
+  --mon-line:      rgba(255, 255, 255, 0.08); /* hairline border */
+  --mon-line-soft: rgba(255, 255, 255, 0.05);
+
+  /* ---------- Text ---------- */
+  --mon-text:  #FBFAF9;                  /* primary text / off-white */
+  --mon-muted: rgba(255, 255, 255, 0.62); /* secondary text */
+  --mon-faint: rgba(255, 255, 255, 0.40); /* tertiary / eyebrow */
+
+  /* ---------- Brand (you / safe) ---------- */
+  --mon-purple:      #836EF9; /* brand hover / mark, you/safe */
+  --mon-purple-pri:  #6E54FF; /* a11y button primary */
+  --mon-purple-soft: rgba(131, 110, 249, 0.14);
+
+  /* ---------- Berry (AI / danger / loss) ---------- */
+  --mon-berry:      #A0055D;
+  --mon-berry-hi:   #E03A8B;
+  --mon-berry-soft: rgba(224, 58, 139, 0.14);
+
+  /* ---------- Status ---------- */
+  --mon-green: #16a34a;
+  --mon-amber: #ca8a04;
+  --mon-red:   #dc2626;
+
+  /* ---------- Radial button gradient recipes (exact from screens-shared) ---------- */
+  --mon-radial-primary:
+    radial-gradient(50% 50% at 50% 50%, rgba(110, 84, 255, 0) 0%, rgba(255, 255, 255, 0.14) 100%),
+    var(--mon-purple-pri);
+  --mon-radial-secondary:
+    radial-gradient(50% 50% at 50% 50%, rgba(250, 250, 250, 0.33) 0%, rgba(115, 115, 115, 0.04) 100%),
+    var(--mon-text);
+  --mon-radial-berry:
+    radial-gradient(50% 50% at 50% 50%, rgba(224, 58, 139, 0) 0%, rgba(255, 255, 255, 0.16) 100%),
+    var(--mon-berry);
+
+  /* ---------- Button shadows (exact from screens-shared) ---------- */
+  --mon-shadow-primary:
+    0 0 0 1px rgba(79, 71, 235, 0.9),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0.5px rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+  --mon-shadow-secondary:
+    inset 0 1px 0.5px #fff,
+    inset 0 -1px 0.5px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.25);
+  --mon-shadow-berry:
+    0 0 0 1px rgba(224, 58, 139, 0.6),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.25),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
