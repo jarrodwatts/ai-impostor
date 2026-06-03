@@ -1,43 +1,21 @@
 "use client";
 
 /**
- * Mounts a GameSocket for the lifetime of a /play session and feeds every
- * validated server event into the zustand store via the pure reducer. The
- * transport is chosen by `lib/ws/factory.createGameSocket`: a real
- * `WebSocketGameSocket` when `NEXT_PUBLIC_WS_URL` is set (M5 live server),
- * otherwise the scripted mock emitter (the local/demo default).
+ * Thin accessor for the /play screens: returns a `send` bound to the SINGLE
+ * app-session socket created by `SocketProvider` (see `lib/ws/socket-provider`).
  *
- * Returns a `send` function so screens can cast votes / send messages through
- * the same socket. Secret ballot is enforced at the store + the mock: the client
- * only ever transmits its OWN `cast_vote`.
+ * Previously this hook mounted its OWN socket per /play mount and called
+ * `reset()` — on the live server that opened a fresh connection the server didn't
+ * associate with the seated player and wiped the seat/roster received during the
+ * lobby join. The socket + store now live above the routes, so /play reuses the
+ * same connection and state with no reset and no re-mount.
+ *
+ * Secret ballot is still enforced at the store + the mock: the client only ever
+ * transmits its OWN `cast_vote` through this `send`.
  */
-import { useEffect, useMemo } from "react";
 import type { ClientEvent } from "@ai-impostor/shared";
-import { createGameSocket } from "@/lib/ws/factory";
-import { useGameStore } from "./store";
+import { useSocket } from "@/lib/ws/socket-provider";
 
 export function useGameSocket(): { send: (ev: ClientEvent) => void } {
-  const apply = useGameStore((s) => s.apply);
-  const setConnected = useGameStore((s) => s.setConnected);
-  const reset = useGameStore((s) => s.reset);
-
-  // Create the socket once per mount (a fresh game each time /play mounts).
-  // Live WS when NEXT_PUBLIC_WS_URL is set; scripted mock otherwise.
-  const socket = useMemo(() => createGameSocket(), []);
-
-  useEffect(() => {
-    reset();
-    const offEvent = socket.onEvent((ev) => apply(ev));
-    const offConn = socket.onConnection((c) => setConnected(c));
-    socket.connect();
-    return () => {
-      offEvent();
-      offConn();
-      socket.disconnect();
-    };
-  }, [socket, apply, setConnected, reset]);
-
-  return {
-    send: (ev: ClientEvent) => socket.send(ev),
-  };
+  return useSocket();
 }

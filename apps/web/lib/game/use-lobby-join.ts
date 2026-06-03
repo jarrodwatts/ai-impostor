@@ -20,9 +20,10 @@
  * Anti-leak: this only touches PRE-GAME lobby state (fixed buy-in B + lobby-fill
  * progress). No mid-game fields are read or held here.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
-import { createGameSocket, isLiveSocket } from "@/lib/ws/factory";
+import { isLiveSocket } from "@/lib/ws/factory";
+import { useSocket } from "@/lib/ws/socket-provider";
 import { useJoin } from "@/lib/chain/use-escrow";
 import { useGameStore } from "./store";
 
@@ -43,9 +44,7 @@ type Stage = "idle" | "paying" | "confirming";
 
 export function useLobbyJoin() {
   const { address } = useAccount();
-  const apply = useGameStore((s) => s.apply);
-  const setConnected = useGameStore((s) => s.setConnected);
-  const reset = useGameStore((s) => s.reset);
+  const { send } = useSocket();
   const clearJoinRejected = useGameStore((s) => s.clearJoinRejected);
   const { join } = useJoin();
 
@@ -59,36 +58,26 @@ export function useLobbyJoin() {
   const [error, setError] = useState<string | null>(null);
   const [txHash, setTxHash] = useState<`0x${string}` | null>(null);
 
-  // Create the socket once per mount; live WS or scripted mock.
-  const socket = useMemo(() => createGameSocket(), []);
+  // The socket + store are owned by SocketProvider (one connection for the whole
+  // session). This hook does NOT create or tear down a socket; it only drives the
+  // join handshake over the shared `send`, so navigating queue → /play keeps the
+  // same connection (and the seat/roster it earned) alive.
 
-  // Keep the latest address available to the (once-registered) connection
-  // handler without reading a ref during render.
+  // Keep the latest address available to the connect handler without reading a
+  // ref during render.
   const addressRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     addressRef.current = address;
   }, [address]);
 
-  // Mount: feed events into the store + send request_join on connect.
+  // Request a lobby seat whenever the (shared) socket is connected. The provider
+  // may have connected before this screen mounted, so we fire on mount-if-already
+  // -connected AND on any reconnect. lobby_open is idempotent in the reducer, so a
+  // repeat request_join is harmless (re-advertises the same open lobby).
   useEffect(() => {
-    reset();
-    const offEvent = socket.onEvent((ev) => apply(ev));
-    const offConn = socket.onConnection((isUp) => {
-      setConnected(isUp);
-      if (isUp) {
-        socket.send({
-          t: "request_join",
-          address: addressRef.current ?? ZERO_ADDRESS,
-        });
-      }
-    });
-    socket.connect();
-    return () => {
-      offEvent();
-      offConn();
-      socket.disconnect();
-    };
-  }, [socket, apply, setConnected, reset]);
+    if (!connected) return;
+    send({ t: "request_join", address: addressRef.current ?? ZERO_ADDRESS });
+  }, [connected, send]);
 
   // Wait for the buy-in tx receipt; confirm payment to the server exactly once.
   const { isSuccess: receiptOk, isError: receiptErr } =
@@ -104,14 +93,14 @@ export function useLobbyJoin() {
       if (!l) return;
       confirmedRef.current = true;
       // External sync: tell the server the on-chain buy-in landed.
-      socket.send({
+      send({
         t: "confirm_payment",
         gameId: l.gameId,
         address: addressRef.current ?? ZERO_ADDRESS,
         txHash,
       });
     }
-  }, [receiptOk, txHash, socket]);
+  }, [receiptOk, txHash, send]);
 
   // Pay buy-in & join: write join(gameId) with value=buyInWei to the escrow
   // address from lobby_open, then wait for the receipt (above).
@@ -125,7 +114,7 @@ export function useLobbyJoin() {
     // confirm with a placeholder tx so the join flow proceeds end-to-end.
     if (!isLiveSocket()) {
       setStage("confirming");
-      socket.send({
+      send({
         t: "confirm_payment",
         gameId: l.gameId,
         address: address ?? ZERO_ADDRESS,
@@ -152,7 +141,7 @@ export function useLobbyJoin() {
         err instanceof Error ? err.message : "Could not submit the buy-in.",
       );
     }
-  }, [address, join, socket]);
+  }, [address, join, send]);
 
   // Retry after a rejection: clear the reason + re-request a lobby seat.
   const retry = useCallback(() => {
@@ -161,8 +150,8 @@ export function useLobbyJoin() {
     setTxHash(null);
     setStage("idle");
     confirmedRef.current = false;
-    socket.send({ t: "request_join", address: address ?? ZERO_ADDRESS });
-  }, [clearJoinRejected, address, socket]);
+    send({ t: "request_join", address: address ?? ZERO_ADDRESS });
+  }, [clearJoinRejected, address, send]);
 
   // Derive the externally-visible status from the store + local stage. No
   // setState-in-effect: the status is a pure function of inputs. A failed

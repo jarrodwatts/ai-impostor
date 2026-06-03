@@ -374,7 +374,12 @@ export class MockGameSocket implements GameSocket {
   }
 }
 
-/** Reset per-round vote lock between games (the provider creates a fresh mock). */
+/**
+ * One mock socket per client session (created once by SocketProvider). It scripts
+ * the full lobby_open → seat → game → settlement arc and persists across the
+ * queue → /play navigation without re-mounting — the script is kicked off on
+ * `confirm_payment` and driven by its own timers, independent of the route.
+ */
 export function createMockGameSocket(): GameSocket {
   return new MockGameSocket();
 }

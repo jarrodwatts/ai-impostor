@@ -1,0 +1,11 @@
+# keep the server image lean — exclude installs, builds, and server-irrelevant dirs
+**/node_modules
+.git
+.agent
+contracts
+design-reference
+apps/web/.next
+**/dist
+**/*.tsbuildinfo
+.vercel
+.turbo
