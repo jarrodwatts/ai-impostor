@@ -34,3 +34,4 @@ pnpm-debug.log*
 coverage/
 .turbo/
 .vercel/
+.vercel

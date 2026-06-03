@@ -2,7 +2,10 @@
 **/node_modules
 .git
 .agent
-contracts
+contracts/lib
+contracts/out
+contracts/cache
+contracts/broadcast
 design-reference
 apps/web/.next
 **/dist
