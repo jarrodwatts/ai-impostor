@@ -155,3 +155,5 @@ M3 server+AI+anti-leak · M4 full web flow · M5 settlement-seam proof + live wi
 - M5 seam risk: `Settlement`/EIP712 typehash + rounding/dust agreement (pin in M1).
 - 4-AI bloc balance + disconnect-penalty fairness are playtest tunables (`BLOC_COHESION`,
   `DISCONNECT_PENALTY_WAIVER`).
+
+_CD check: 2026-06-03T15:47:19Z_
