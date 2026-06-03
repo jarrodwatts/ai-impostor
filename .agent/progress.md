@@ -1,8 +1,9 @@
 # Progress
 
 ## Current state
-- **Milestone:** M0, M1, and **M2+M3+M4 complete & reviewed**. Next: **M5 integration** (infra-free
-  parts) → **M6 deploy-readiness/docs**.
+- **Milestones M0–M5 complete & reviewed; M6 = deploy-readiness documented.** The codebase builds,
+  type-checks, and tests green end-to-end; the server↔contract settlement seam is proven on a local
+  EVM. Remaining work is credential-gated go-live + production-hardening — see `DEPLOY.md`.
 - **Repo:** pnpm monorepo at `/Users/jarrod/ai-impostor`, git on `main`, single root lockfile.
 - **Verified at HEAD:** `pnpm -r build/typecheck/test` (33 shared + 84 server tests) + `forge test`
   (21 unit + 2 conservation invariants) all green.
@@ -111,8 +112,29 @@ server+Postgres+Redis→Railway, contracts→Monad testnet. See `standards.md` f
 - Trade-offs: parallel tracks must be path-disjoint (they are, per milestone); no per-agent commit
   granularity.
 
+## M5 delivered (integration, infra-free parts)
+- **Settlement seam proven on a local `anvil` EVM:** an integration test deploys `ImpostorEscrow`
+  and drives the real money flow with viem, signing via the SERVER's actual `signSettlement`.
+  HUMAN_WIN split / dust-to-house / AI_WIN house-100% all pay out exactly (Σpayouts+house==pool,
+  escrow→0); tampered payout → `ConservationViolated`, wrong signer → `BadSignature`, abort→refund
+  works. 6/6, gated as `*.itest.ts` (`pnpm --filter @ai-impostor/server test:integration`).
+- **FE live-server wiring:** `createGameSocket()` uses the real zod-validating WebSocket when
+  `NEXT_PUBLIC_WS_URL` is set, else the mock emitter (default).
+
+## Final status (M6)
+Complete & locally verified: M0 scaffold · M1 protocol+tokens+primitives · M2 escrow+invariants ·
+M3 server+AI+anti-leak · M4 full web flow · M5 settlement-seam proof + live wiring. Go-live steps
+(testnet deploy, Railway/Vercel, real Redis/Postgres/Anthropic, browser E2E) are in `DEPLOY.md`.
+
 ## Known limitations / watch items
 - Next 16 has breaking changes — implementers must read `apps/web/node_modules/next/dist/docs/`.
+- **Production-hardening before real money (interface-stubbed today, run without external services):**
+  concrete Redis queue store + Postgres repositories (interfaces + in-memory impl + pg skeleton
+  exist); chain `SettlementSubmitter` (interface + stub; EIP712 signing is real); disconnect/grace →
+  auto-eliminate (deferred from M3). All have clean seams — no rearchitecting needed.
+- Repo-wide eslint config not set up (web lints; server/packages lack eslint) — `pnpm -r lint` is
+  not a working gate yet. `@anthropic-ai/sdk@0.39.0` predates the adaptive-thinking/effort request
+  types (documented loose cast). Minor test/dead-code cleanups noted in the M2/M3/M4 review.
 - **M4 prep (from M1 review, minor):** `apps/web/tsconfig.json` doesn't extend `tsconfig.base.json`
   and lacks `noUncheckedIndexedAccess` (a standards gate). Align at the start of M4 before screen
   code piles up (forcing it now risks churn in scaffolded code). Also: shared `*.test.ts` aren't
