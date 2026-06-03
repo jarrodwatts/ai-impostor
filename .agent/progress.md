@@ -1,5 +1,18 @@
 # Progress
 
+## LIVE DEPLOYMENT (Monad testnet)
+- **Contract:** `ImpostorEscrow` @ `0x25c4966C497F5E633a110314Dc284942C284ebc1` (chain 10143).
+- **Web (Vercel):** https://ai-impostor-rose.vercel.app — built with `NEXT_PUBLIC_WS_URL` → the server.
+- **Server (Railway):** `wss://server-production-3dcd.up.railway.app` (project `ai-impostor-demo`).
+  `chain=live (viem)`, faucet on, `MIN_HUMANS=2`, buy-in 0.01 MON. LLM=fake until `ANTHROPIC_API_KEY` set.
+- **Repo:** github.com/jarrodwatts/ai-impostor (private). Vercel Git CD connected (push → web deploys).
+  Railway repo-connect pending a GitHub-app grant (deployed via `railway up` for now).
+- **Verified live:** `/healthz` 200; on-chain `createGame` (game Open); faucet drips real MON
+  (0→0.1 MON tx); WS `request_join`→`lobby_open` returns gameId+escrow+buyIn. Settlement seam proven
+  on anvil (6/6). Full multi-human game→on-chain settlement: exercise in the browser demo.
+- **Secrets:** demo key only in Railway env + deploy shell (never committed); `.env*` gitignored.
+- **To enable real AI:** set `ANTHROPIC_API_KEY` on the Railway `server` service → redeploy.
+
 ## Current state
 - **Milestones M0–M5 complete & reviewed; M6 = deploy-readiness documented.** The codebase builds,
   type-checks, and tests green end-to-end; the server↔contract settlement seam is proven on a local
