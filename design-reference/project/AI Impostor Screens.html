@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AI Impostor — Screen Designs</title>
+<link rel="stylesheet" href="colors_and_type.css" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  #root { width: 100vw; height: 100vh; }
+</style>
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#0E100F"/>
+    <rect x="30" y="30" width="40" height="40" rx="11" fill="#A0055D"/>
+    <circle cx="42" cy="48" r="4" fill="#0E100F"/>
+    <circle cx="58" cy="48" r="4" fill="#0E100F"/>
+  </svg>
+</template>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="screens-shared.jsx"></script>
+<script type="text/babel" src="screens-home.jsx"></script>
+<script type="text/babel" src="screens-onboarding-lobby.jsx"></script>
+<script type="text/babel" src="screens-game.jsx"></script>
+<script type="text/babel" src="screens-endgame.jsx"></script>
+<script type="text/babel" src="screens-desktop.jsx"></script>
+
+<script type="text/babel">
+const { useState } = React;
+
+// ── Developer spec-note card (leads each section) ───────────────────
+function NoteCard({ tag, title, bullets, height = 560 }) {
+  return (
+    <div style={{
+      width: '100%', height: '100%', background: '#121212', borderRadius: 18,
+      border: '1px solid rgba(255,255,255,0.08)', padding: 24,
+      display: 'flex', flexDirection: 'column', color: '#FBFAF9',
+      fontFamily: SANS, position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
+        <span style={{ width: 7, height: 7, borderRadius: 9999, background: C.purple }} />
+        <span style={{ font: `600 10px/1 ${MONO}`, letterSpacing: '0.18em', color: 'rgba(255,255,255,0.4)' }}>{tag}</span>
+      </div>
+      <h3 style={{ margin: '0 0 18px', font: `500 22px/1.15 ${DISP}`, letterSpacing: '-0.02em' }}>{title}</h3>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        {bullets.map(([k, v], i) => (
+          <div key={i} style={{ display: 'flex', gap: 11 }}>
+            <span style={{ width: 5, height: 5, borderRadius: 9999, background: C.purple, marginTop: 7, flex: '0 0 auto' }} />
+            <div>
+              <div style={{ font: `600 12.5px/1.3 ${SANS}`, color: '#FBFAF9', marginBottom: 3 }}>{k}</div>
+              <div style={{ font: `400 12px/1.5 ${SANS}`, color: 'rgba(255,255,255,0.55)' }}>{v}</div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const NOTE_W = 320;
+
+function App() {
+  return (
+    <DesignCanvas>
+      <DCSection id="home" title="Home" subtitle="The entry point — understand the game and get straight into onboarding. Not pure marketing; built to start playing.">
+        <DCArtboard id="hm-notes" label="Spec notes" width={NOTE_W} height={620}>
+          <NoteCard tag="§1 · §7 · §8.9" title="Land, get it, sit down"
+            bullets={[
+              ['One job', 'Explain the game in a glance and route to Connect → queue. Every CTA points at the same place: connect a Monad wallet and play.'],
+              ['Show, don\u2019t sell', 'A small live-looking chat + vote preview communicates the mechanic faster than marketing copy. Keep claims specific, no fluff.'],
+              ['Responsive', 'Same content, two layouts. Mobile stacks hero → preview → steps with a sticky Connect bar; desktop is a split hero + how-it-works + stakes.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="home-m" label="Home / landing — mobile" width={390} height={844}><HomeMobile /></DCArtboard>
+        <DCArtboard id="home-d" label="Home / landing — desktop" width={1280} height={1240}><HomeDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="onboarding" title="Onboarding" subtitle="Wallet-connect only — no email, no profile. Faucet hint is a fast-follow for new testnet users.">
+        <DCArtboard id="ob-notes" label="Spec notes" width={NOTE_W} height={844}>
+          <NoteCard tag="§8.9 · §8.10" title="Get them to a table, fast"
+            bullets={[
+              ['Connect only', 'One action: connect a Monad wallet. No username, avatar, or profile — those are dealt in-game so nothing a player chooses can leak a tell.'],
+              ['Faucet dead-end', "Brand-new testnet wallets hold 0 MON. Detect an empty balance and route to the faucet rather than into a queue they can't afford."],
+              ['Moderation', 'v1 runs an automated profanity / PII filter only. No human mods, no report/block yet — harden before any mainnet launch.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="connect-m" label="Connect wallet — mobile" width={390} height={844}><ConnectMobile /></DCArtboard>
+        <DCArtboard id="faucet-m" label="No-MON / faucet hint — mobile" width={390} height={844}><FaucetMobile /></DCArtboard>
+        <DCArtboard id="connect-d" label="Connect wallet — desktop" width={1280} height={800}><ConnectDesktop /></DCArtboard>
+        <DCArtboard id="faucet-d" label="No-MON / faucet hint — desktop" width={1280} height={800}><FaucetDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="lobby" title="Matchmaking & Lobby" subtitle="Public quick-match. 10 seats. Countdown starts at 6 humans; late joiners seated up to 9.">
+        <DCArtboard id="lb-notes" label="Spec notes" width={NOTE_W} height={844}>
+          <NoteCard tag="§5 · §8.1" title="Fill the room without leaking"
+            bullets={[
+              ['Anti-leak fill', 'Never expose how many seats are human vs AI — pool size would give it away. Seat fill is shown as deliberately ambiguous progress.'],
+              ['Start trigger', 'A ~20–30s countdown begins once 6 humans are seated; more humans are accepted up to the 9 cap during the countdown.'],
+              ['Identities at start', 'Random avatar + codename are assigned to everyone — humans and AI alike — only when the round begins. Nobody brings their own.'],
+              ['AI count', '10 − humans seated. Always 1–4, never 0. Surplus humans roll to the next lobby.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="queue-m" label="Quick-match queue — mobile" width={390} height={844}><QueueMobile /></DCArtboard>
+        <DCArtboard id="queue-d" label="Quick-match queue — desktop" width={1280} height={800}><QueueDesktop /></DCArtboard>
+        <DCArtboard id="lobby-m" label="Table forming — mobile" width={390} height={844}><LobbyMobile /></DCArtboard>
+        <DCArtboard id="lobby-d" label="Table forming — desktop" width={1280} height={800}><LobbyDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="discussion" title="Round — Discussion" subtitle="Prompt → ~2-minute open chat. Typing indicators on. Escalating prompts each round.">
+        <DCArtboard id="ds-notes" label="Spec notes" width={NOTE_W} height={844}>
+          <NoteCard tag="§2 · §8.2 · §8.4" title="The blend-in surface"
+            bullets={[
+              ['Escalating prompts', 'Each round opens with a system prompt, posted to chat. Round 1 is a trivial ice-breaker; later rounds dig deeper to surface behavioral signal.'],
+              ['Typing realism', 'Typing indicators are ON for everyone. With presence tells removed, the AI must fake realistic typing cadence + latency — the dominant tell channel to tune.'],
+              ['Uniform identity', 'No wallet, ENS, custom avatar, history, or badges. Everyone renders identically — the only difference is how they talk.'],
+              ['Chat v1', 'Plain text only, with a length cap (240) and rate limit. Replies / @mentions / reactions are deferred.'],
+              ['Pot Health', 'HUD shows a "Pot Health %" (starts 100%), never absolute MON or any headcount.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="prompt-m" label="Round prompt drop — mobile" width={390} height={844}><PromptMobile /></DCArtboard>
+        <DCArtboard id="prompt-d" label="Round prompt drop — desktop" width={1280} height={800}><PromptDesktop /></DCArtboard>
+        <DCArtboard id="game-m" label="Live discussion — mobile" width={390} height={844}><GameMobile /></DCArtboard>
+        <DCArtboard id="game-d" label="Live discussion — desktop" width={1280} height={800}><GameDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="vote" title="Round — Vote" subtitle="Chat locks. Short dedicated vote window. Secret ballot, locked on first cast, no recast, no abstain.">
+        <DCArtboard id="vt-notes" label="Spec notes" width={NOTE_W} height={844}>
+          <NoteCard tag="§2 · §8.3" title="One vote, in the dark"
+            bullets={[
+              ['Secret ballot', 'The UI never shows who voted for whom — only the outcome (who was eliminated). Build the tally server-side.'],
+              ['Locked on first cast', 'A tap commits the vote immediately. No recast, no abstain. Surface a clear locked state while the rest of the table votes.'],
+              ['Vote window', 'Short timer (validate ~15–20s). Long enough to decide, short enough to keep pace.'],
+              ['Ties', 'Most votes is eliminated. On a tie, ALL tied players are eliminated that round.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="vote-m" label="Cast vote — mobile" width={390} height={844}><VoteMobile /></DCArtboard>
+        <DCArtboard id="votelock-m" label="Vote locked / waiting — mobile" width={390} height={844}><VoteLockedMobile /></DCArtboard>
+        <DCArtboard id="votelock-d" label="Vote locked / waiting — desktop" width={1280} height={800}><VoteLockedDesktop /></DCArtboard>
+        <DCArtboard id="vote-d" label="Cast vote — desktop" width={1280} height={800}><VoteDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="elimination" title="Elimination" subtitle="Resolve: remove → win-check first → then penalty. Pot Health is the only human-vs-AI signal mid-game.">
+        <DCArtboard id="el-notes" label="Spec notes" width={NOTE_W} height={620}>
+          <NoteCard tag="§2 · §4" title="Resolution order matters"
+            bullets={[
+              ['Sequence', 'Remove all eliminated players → check win conditions FIRST → then apply any misvote penalty. Penalty is waived if the round ends as a human win.'],
+              ['The only tell', 'Voting out a human docks the pool 10% (flat per round). Voting out an AI costs nothing. The Pot Health change is the only mid-game signal of what you hit.'],
+              ['Eliminated = gone', 'No payout for the eliminated. Humans become muted spectators; an eliminated AI goes silent.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="elim-m" label="Elimination result (misvote) — mobile" width={390} height={844}><EliminationMobile /></DCArtboard>
+        <DCArtboard id="elim-d" label="Elimination result (misvote) — desktop" width={1280} height={800}><EliminationDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="spectator" title="Spectator" subtitle="Eliminated humans watch, muted, same chat view — but AI stay hidden until the final reveal.">
+        <DCArtboard id="sp-notes" label="Spec notes" width={NOTE_W} height={620}>
+          <NoteCard tag="§8.6" title="Watch, don't leak"
+            bullets={[
+              ['Read-only', 'Eliminated humans keep the same chat view but cannot send. Make the muted state unmistakable.'],
+              ['No reveal', 'AI identities are NOT shown to spectators until the final reveal — so a knocked-out player cannot leak who is AI to living players via a side channel.'],
+              ['No payout', 'Only survivors split the pool. The spectator is playing for nothing but the watch.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="spec-m" label="Spectator view — mobile" width={390} height={844}><SpectatorMobile /></DCArtboard>
+        <DCArtboard id="spec-d" label="Spectator view — desktop" width={1280} height={800}><SpectatorDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="endwin" title="End — Reveal & Settlement (Human Win)" subtitle="Dramatic reveal of who was AI, your read vs reality, then on-chain payout. First time absolute MON is shown.">
+        <DCArtboard id="ew-notes" label="Spec notes" width={NOTE_W} height={844}>
+          <NoteCard tag="§8.7 · §4" title="The payoff moment"
+            bullets={[
+              ['Reveal then settle', 'Animate the AI reveal and the win/lose verdict first, then show the numbers — this is the first and only point absolute MON appears.'],
+              ['Your read', 'Reflect the player\u2019s suspicion vs reality (you voted Slate Owl — it was AI). Personal accountability is the hook.'],
+              ['On-chain', 'Survivors split the remaining pool equally. Show payout amount, tx confirmation, and an explorer link. Escrow contract settles.'],
+              ['Worked math', 'B=5, 8 humans → 40 MON pool. Two misvote rounds → 32.40. ÷6 survivors = 5.40 each (+0.40 net).'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="reveal-m" label="AI reveal — mobile" width={390} height={844}><RevealWinMobile /></DCArtboard>
+        <DCArtboard id="settle-m" label="Settlement / payout — mobile" width={390} height={844}><SettlementMobile /></DCArtboard>
+        <DCArtboard id="settle-d" label="Settlement / payout — desktop" width={1280} height={800}><SettlementDesktop /></DCArtboard>
+        <DCArtboard id="reveal-d" label="AI reveal — desktop" width={1280} height={800}><RevealWinDesktop /></DCArtboard>
+      </DCSection>
+
+      <DCSection id="endloss" title="End — AI Win & Share" subtitle="Parity reached → house takes 100%. Then a one-tap requeue and a shareable result card.">
+        <DCArtboard id="ls-notes" label="Spec notes" width={NOTE_W} height={620}>
+          <NoteCard tag="§2 · §8.8" title="Lose loud, replay fast"
+            bullets={[
+              ['AI win = parity', 'When surviving AI ≥ surviving humans, the AI win: at parity the bloc can vote out any human and close it out. House takes the entire pool.'],
+              ['Run it back', 'One-tap "Play again" drops straight back into the queue — keep the loop tight.'],
+              ['Share card', 'A win/loss + payout card built for social distribution. Mirrors the reveal verdict.'],
+            ]} />
+        </DCArtboard>
+        <DCArtboard id="loss-m" label="AI win / you lose — mobile" width={390} height={844}><RevealLossMobile /></DCArtboard>
+        <DCArtboard id="loss-d" label="AI win / you lose — desktop" width={1280} height={800}><RevealLossDesktop /></DCArtboard>
+        <DCArtboard id="share-m" label="Shareable result card — mobile" width={390} height={844}><ShareMobile /></DCArtboard>
+        <DCArtboard id="share-d" label="Shareable result card — desktop" width={1280} height={800}><ShareDesktop /></DCArtboard>
+      </DCSection>
+    </DesignCanvas>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

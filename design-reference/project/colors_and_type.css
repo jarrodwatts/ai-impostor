@@ -1,0 +1,275 @@
+/* =========================================================
+   Monad Design System — colors & type tokens
+   Source of truth for fonts, colors, type scale, spacing,
+   radii, and semantic aliases. Pulled from monapp/globals.css
+   and build-anything/globals.css.
+   ========================================================= */
+
+@font-face {
+  font-family: 'Britti Sans';
+  src: url('./fonts/britti-sans-variable.woff2') format('woff2'),
+       url('./fonts/britti-sans-variable.woff') format('woff'),
+       url('./fonts/britti-sans-variable.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Geist Pixel Square';
+  src: url('./fonts/GeistPixel-Square.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  /* ---------- Brand core ---------- */
+  --monad-purple:        #836EF9;  /* core brand hover / mark */
+  --monad-purple-primary:#6E54FF;  /* a11y button primary */
+  --monad-purple-300:    #B8B4FE;
+  --monad-purple-400:    #9489FC;
+  --monad-berry:         #A0055D;  /* berry primary */
+  --monad-blue:          #200052;  /* deep blue */
+  --monad-off-white:     #FBFAF9;  /* button off-white */
+  --monad-off-white-hover:#EDEBE8;
+  --monad-off-black:     #0A0A0A;  /* button off-black */
+  --monad-off-black-hover:#24282E;
+  --monad-off-black-bg:  #0E100F;  /* primary dark canvas */
+
+  /* ---------- Purple scale ---------- */
+  --purple-50:  hsl(240 100% 98%);
+  --purple-100: hsl(243 91%  95%);
+  --purple-200: hsl(243 100% 92%);
+  --purple-300: hsl(243 97%  85%);
+  --purple-400: hsl(246 95%  76%);
+  --purple-500: hsl(249 92%  70%);
+  --purple-600: hsl(249 100% 66%);
+  --purple-700: hsl(254 72%  50%);
+  --purple-800: hsl(254 71%  42%);
+  --purple-900: hsl(255 70%  35%);
+  --purple-950: hsl(252 74%  23%);
+
+  /* ---------- Berry scale ---------- */
+  --berry-50:  hsl(334 100% 95%);
+  --berry-100: hsl(333 100% 90%);
+  --berry-200: hsl(333 98%  80%);
+  --berry-300: hsl(333 75%  62%);
+  --berry-400: hsl(326 94%  41%);
+  --berry-500: hsl(326 94%  32%);
+  --berry-600: hsl(325 94%  27%);
+  --berry-700: hsl(326 94%  21%);
+  --berry-800: hsl(326 95%  15%);
+  --berry-900: hsl(326 93%  11%);
+  --berry-950: hsl(326 94%  7%);
+
+  /* ---------- Blue scale ---------- */
+  --blue-50:  hsl(254 100% 95%);
+  --blue-100: hsl(253 100% 88%);
+  --blue-200: hsl(254 100% 80%);
+  --blue-300: hsl(252 100% 65%);
+  --blue-400: hsl(263 100% 28%);
+  --blue-500: hsl(263 100% 16%);
+  --blue-600: hsl(263 100% 14%);
+  --blue-700: hsl(264 100% 10%);
+  --blue-800: hsl(264 100% 7%);
+  --blue-900: hsl(262 100% 5%);
+  --blue-950: hsl(260 100% 3%);
+
+  /* ---------- Off-white neutrals (warm) ---------- */
+  --offwhite-50:  hsl(0 0% 100%);
+  --offwhite-100: hsl(0 0% 98%);
+  --offwhite-200: hsl(30 20% 98%);
+  --offwhite-300: hsl(30 10% 96%);
+  --offwhite-400: hsl(24 22% 95%);
+  --offwhite-500: hsl(30 12% 92%);
+  --offwhite-600: hsl(36 10% 81%);
+  --offwhite-700: hsl(32 9%  72%);
+  --offwhite-800: hsl(28 7%  63%);
+  --offwhite-900: hsl(25 5%  54%);
+  --offwhite-950: hsl(27 5%  44%);
+
+  /* ---------- Off-black neutrals (cool) ---------- */
+  --offblack-50:  hsl(214 12% 45%);
+  --offblack-100: hsl(213 12% 39%);
+  --offblack-200: hsl(212 12% 33%);
+  --offblack-300: hsl(213 12% 25%);
+  --offblack-400: hsl(214 12% 16%);
+  --offblack-500: hsl(220 13% 14%);
+  --offblack-600: hsl(220 10% 12%);
+  --offblack-700: hsl(150 7%  6%);
+  --offblack-800: hsl(240 7%  3%);
+  --offblack-900: hsl(0 0% 2%);
+  --offblack-950: hsl(0 0% 0%);
+
+  /* ---------- Semantic / toast ---------- */
+  --success:        #16a34a;
+  --success-bg:     hsl(142 71% 45% / 0.15);
+  --warning:        #ca8a04;
+  --warning-bg:     hsl(45 93% 47% / 0.15);
+  --destructive:    #dc2626;
+  --destructive-bg: hsl(0 84% 60% / 0.15);
+  --info:           var(--purple-600);
+  --info-bg:        hsl(249 92% 70% / 0.15);
+
+  /* ---------- Light surface aliases (default) ---------- */
+  --bg:             #ffffff;
+  --fg:             var(--offblack-950);
+  --fg-muted:       #737373;   /* neutral-500 */
+  --fg-subtle:      #a3a3a3;   /* neutral-400 */
+  --fg-disabled:    #d4d4d4;   /* neutral-300 */
+  --surface:        var(--offwhite-200);
+  --surface-hover:  var(--offwhite-500);
+  --card:           #ffffff;
+  --border:         hsl(0 0% 90%);
+  --separator:      #e4e4e7;
+
+  /* ---------- Dark surface aliases ---------- */
+  --bg-dark:            var(--offblack-700);     /* #0E100F */
+  --fg-on-dark:         var(--offwhite-200);
+  --fg-muted-dark:      var(--offwhite-700);
+  --card-dark:          var(--offblack-900);
+  --card-elevated-dark: var(--offblack-500);
+  --border-dark:        var(--offblack-400);
+
+  /* ---------- Typography ---------- */
+  --font-display: 'Britti Sans', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono:    'Roboto Mono', ui-monospace, Menlo, Consolas, monospace;
+  --font-pixel:   'Geist Pixel Square', 'Courier New', monospace;
+
+  /* Type scale — monapp uses Tailwind defaults; Britti Sans for headlines */
+  --text-2xs:  0.625rem;   /* 10 */
+  --text-xs:   0.75rem;    /* 12 */
+  --text-sm:   0.875rem;   /* 14 */
+  --text-base: 1rem;       /* 16 */
+  --text-lg:   1.125rem;   /* 18 */
+  --text-xl:   1.25rem;    /* 20 */
+  --text-2xl:  1.5rem;     /* 24 */
+  --text-3xl:  1.875rem;   /* 30 — stat card / card titles */
+  --text-4xl:  2.25rem;    /* 36 */
+  --text-5xl:  3rem;       /* 48 — section heads */
+  --text-6xl:  3.75rem;    /* 60 */
+  --text-7xl:  4.5rem;     /* 72 — hero */
+  --text-8xl:  6rem;       /* 96 */
+
+  --leading-tight:  1.1;
+  --leading-snug:   1.25;
+  --leading-normal: 1.5;
+  --leading-loose:  1.75;
+
+  --tracking-tight: -0.03em;   /* big heads */
+  --tracking-snug:  -0.02em;   /* medium heads */
+  --tracking-wide:  0.02em;    /* mono / eyebrow */
+
+  /* ---------- Spacing ---------- */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* ---------- Radii ---------- */
+  --radius-sm:   2px;
+  --radius-md:   6px;    /* build-anything buttons */
+  --radius-lg:   8px;
+  --radius-xl:   12px;
+  --radius-2xl:  16px;
+  --radius-3xl:  24px;   /* monapp cards */
+  --radius-4xl:  32px;
+  --radius-full: 9999px;
+
+  /* ---------- Shadows ---------- */
+  --shadow-badge: 0 1px 3px rgba(20,21,26,0.10), 0 1px 2px rgba(20,21,26,0.06);
+  --shadow-button-secondary-light:
+    inset 0 1px 0.5px 0 var(--offwhite-50),
+    inset 0 -1px 0.5px 0 rgba(0,0,0,0.08),
+    0 1px 2px 0 rgba(0,0,0,0.08),
+    0 0 0 1px rgba(0,0,0,0.25);
+  --shadow-button-secondary-dark:
+    inset 0 1px 0.5px 0 rgba(255,255,255,0.12),
+    inset 0 -1px 0.5px 0 rgba(0,0,0,0.33),
+    0 1px 2px 0 var(--offblack-950),
+    0 0 0 1px var(--offblack-950);
+  --shadow-login-button:
+    0 0 5.7px 0.7px #d4cdff,
+    0 1px 2px 0 rgba(0,0,0,0.2),
+    inset 0 1px 0.5px 0 rgba(255,255,255,0.25),
+    inset 0 -1px 0.5px 0 rgba(255,255,255,0.25),
+    0 0 0 1px rgba(79,71,235,0.9);
+
+  /* ---------- Gradient recipes (radial buttons + hero) ---------- */
+  --radial-primary:
+    radial-gradient(50% 50% at 50% 50%, rgba(110,84,255,0) 0%, rgba(255,255,255,0.12) 100%),
+    var(--monad-purple-primary);
+  --radial-secondary:
+    radial-gradient(50% 50% at 50% 50%, rgba(250,250,250,0.33) 0%, rgba(115,115,115,0.04) 100%),
+    var(--monad-off-white);
+  --radial-tertiary:
+    radial-gradient(50% 50% at 50% 50%, rgba(23,23,23,0.2) 0%, rgba(163,163,163,0.16) 100%),
+    var(--monad-off-black);
+}
+
+/* =========================================================
+   Semantic typography (element-level)
+   ========================================================= */
+html { font-family: var(--font-sans); color: var(--fg); background: var(--bg); }
+
+h1, h2, h3, h4, h5, h6 { font-family: var(--font-display); font-weight: 500; }
+
+/* Hero heading — landing pages */
+.h-hero,
+h1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 6vw, var(--text-7xl));
+  line-height: var(--leading-tight);
+  letter-spacing: var(--tracking-tight);
+  font-weight: 500;
+}
+
+h2 { font-size: var(--text-5xl); line-height: var(--leading-tight); letter-spacing: var(--tracking-tight); }
+h3 { font-size: var(--text-3xl); line-height: var(--leading-snug); letter-spacing: var(--tracking-snug); }
+h4 { font-size: var(--text-2xl); line-height: var(--leading-snug); letter-spacing: var(--tracking-snug); }
+h5 { font-size: var(--text-xl);  line-height: var(--leading-snug); }
+h6 { font-size: var(--text-lg);  line-height: var(--leading-normal); }
+
+p  { font-size: var(--text-base); line-height: var(--leading-normal); color: var(--fg); }
+small { font-size: var(--text-sm); color: var(--fg-muted); }
+
+/* Eyebrow / mono label used on stat cards and section badges */
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--fg);
+}
+
+/* Big stat number, e.g. network TPS */
+.stat {
+  font-family: var(--font-display);
+  font-size: var(--text-3xl);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: var(--tracking-snug);
+}
+
+code, kbd, samp, pre {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+/* Pixel label — BuildAnything only */
+.pixel {
+  font-family: var(--font-pixel);
+  font-size: var(--text-sm);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}

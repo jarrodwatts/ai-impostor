@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# allow native-binary build scripts these tools need
+onlyBuiltDependencies:
+  - esbuild
+  - unrs-resolver
+# intentionally skipped (have JS fallbacks / not needed locally)
+ignoredBuiltDependencies:
+  - sharp
+  - msw
