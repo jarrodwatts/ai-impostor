@@ -1,9 +1,32 @@
 # Progress
 
 ## Current state
-- **Milestone:** M0 + **M1 (shared foundations) complete & reviewed (APPROVE)**. The gate is open —
-  next up: **M2 (contracts) ∥ M3 (server+AI) ∥ M4 (web screens)** run in parallel.
+- **Milestone:** M0, M1, and **M2+M3+M4 complete & reviewed**. Next: **M5 integration** (infra-free
+  parts) → **M6 deploy-readiness/docs**.
 - **Repo:** pnpm monorepo at `/Users/jarrod/ai-impostor`, git on `main`, single root lockfile.
+- **Verified at HEAD:** `pnpm -r build/typecheck/test` (33 shared + 84 server tests) + `forge test`
+  (21 unit + 2 conservation invariants) all green.
+
+## M2+M3+M4 delivered (reviewed: REQUEST CHANGES → fixed → merged)
+- **M2 contracts:** full `ImpostorEscrow` (EIP712 settlement, strict `==` conservation, survivor-
+  must-be-funder, replay guard, push-with-pull-fallback, Pausable); 21 unit tests + 2 Foundry
+  conservation invariants (512k calls, 0 reverts = house-EV-≥0 proof); ABI regenerated into
+  `packages/contracts`. Live testnet deploy is a documented manual step (needs funded key).
+- **M3 server:** `ws` gateway + `projectStateForRecipient` anti-leak choke point (property-tested
+  across roles/phases/scenarios), `Game` state machine, pure `resolution` (win-check-first, flat-10%
+  penalty w/ human-win waiver, ties=all-out), matchmaking (aiCount=clamp(10−h,1,4), countdown,
+  rollover), AI runner (persona/cadence/blocVote, `LlmClient` interface: real Anthropic + deterministic
+  fake), EIP712 settlement signer (viem). Redis/Postgres/chain-submit behind interfaces w/ in-memory
+  defaults; boots with no external services. 84 tests incl. headless full-game sim → valid Settlement.
+- **M4 web:** providers (wagmi/Reown AppKit/TanStack Query on Monad testnet), leak-proof zustand
+  store + `applyServerEvent`, mock WS emitter scripting a full game, all routes
+  (home→connect→faucet→queue→lobby→`/play/[gameId]` phase-router→result→share) on the M1 primitives;
+  `tsconfig` aligned to base (+noUncheckedIndexedAccess).
+- **Review fix-cycle (3 important integration-drift items, all fixed):** FE `buyInWei()`→`buyIn()`;
+  reject self-votes server-side + filter own seat in FE vote view; validate `SettlementReveal` at the
+  store boundary (was an unvalidated cast).
+- **Deferred (minor, logged):** cleanup of scratch code in `resolution.test.ts` + a dead local in
+  `Game.ts`; strengthen the typehash pin to keccak-vs-`settlementTypehash()`; repo-wide eslint setup.
 
 ## M1 delivered (reviewed: APPROVE)
 - `packages/shared`: finalized WS event-schema; added additive `GameConfig` DTO + `queue_state`

@@ -2,9 +2,10 @@
 
 /**
  * Mounts a GameSocket for the lifetime of a /play session and feeds every
- * validated server event into the zustand store via the pure reducer. In M4 it
- * uses the mock emitter; swapping to the real WebSocketGameSocket in M5 is a
- * one-line change (this hook is the only mount point).
+ * validated server event into the zustand store via the pure reducer. The
+ * transport is chosen by `lib/ws/factory.createGameSocket`: a real
+ * `WebSocketGameSocket` when `NEXT_PUBLIC_WS_URL` is set (M5 live server),
+ * otherwise the scripted mock emitter (the local/demo default).
  *
  * Returns a `send` function so screens can cast votes / send messages through
  * the same socket. Secret ballot is enforced at the store + the mock: the client
@@ -12,7 +13,7 @@
  */
 import { useEffect, useMemo } from "react";
 import type { ClientEvent } from "@ai-impostor/shared";
-import { createMockGameSocket } from "@/lib/ws/mock-server";
+import { createGameSocket } from "@/lib/ws/factory";
 import { useGameStore } from "./store";
 
 export function useGameSocket(): { send: (ev: ClientEvent) => void } {
@@ -21,7 +22,8 @@ export function useGameSocket(): { send: (ev: ClientEvent) => void } {
   const reset = useGameStore((s) => s.reset);
 
   // Create the socket once per mount (a fresh game each time /play mounts).
-  const socket = useMemo(() => createMockGameSocket(), []);
+  // Live WS when NEXT_PUBLIC_WS_URL is set; scripted mock otherwise.
+  const socket = useMemo(() => createGameSocket(), []);
 
   useEffect(() => {
     reset();
