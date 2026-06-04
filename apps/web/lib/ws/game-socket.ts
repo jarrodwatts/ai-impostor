@@ -71,6 +71,16 @@ export class WebSocketGameSocket implements GameSocket {
   private backoffMs: number;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closedByUser = false;
+  // Keepalive: a client→server heartbeat keeps the connection's traffic flowing
+  // so an idle proxy (Railway edge) never silently drops a quiet WebSocket — the
+  // root cause of issue #2 (frozen game at 0:00, stuck typing, lost messages).
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  // Watchdog: if NOTHING is received for a long stretch the socket is likely a
+  // zombie (dropped underneath without firing `close`) — force a reconnect.
+  private watchdogTimer: ReturnType<typeof setInterval> | null = null;
+  private lastInboundAt = 0;
+  private static readonly HEARTBEAT_MS = 12_000;
+  private static readonly SILENCE_MS = 45_000;
 
   constructor(opts: WebSocketGameSocketOptions) {
     this.url = opts.url;
@@ -91,10 +101,13 @@ export class WebSocketGameSocket implements GameSocket {
 
     ws.addEventListener("open", () => {
       this.backoffMs = this.baseBackoffMs;
+      this.lastInboundAt = Date.now();
+      this.startKeepalive();
       this.emitter.emitConnection(true);
     });
 
     ws.addEventListener("message", (e: MessageEvent) => {
+      this.lastInboundAt = Date.now();
       let raw: unknown;
       try {
         raw = JSON.parse(typeof e.data === "string" ? e.data : "");
@@ -106,12 +119,38 @@ export class WebSocketGameSocket implements GameSocket {
     });
 
     const onDown = () => {
+      this.stopKeepalive();
       this.emitter.emitConnection(false);
       this.ws = null;
       if (!this.closedByUser) this.scheduleReconnect();
     };
     ws.addEventListener("close", onDown);
     ws.addEventListener("error", () => ws.close());
+  }
+
+  private startKeepalive(): void {
+    this.stopKeepalive();
+    this.heartbeatTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ t: "heartbeat" }));
+      }
+    }, WebSocketGameSocket.HEARTBEAT_MS);
+    this.watchdogTimer = setInterval(() => {
+      if (this.ws && Date.now() - this.lastInboundAt > WebSocketGameSocket.SILENCE_MS) {
+        this.ws.close(); // → onDown → scheduleReconnect
+      }
+    }, 5_000);
+  }
+
+  private stopKeepalive(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
   }
 
   private scheduleReconnect(): void {
@@ -126,6 +165,7 @@ export class WebSocketGameSocket implements GameSocket {
 
   disconnect(): void {
     this.closedByUser = true;
+    this.stopKeepalive();
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
