@@ -12,7 +12,7 @@
  */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Brand, Btn, Eyebrow, C, DISP, SANS } from "@/components/primitives";
+import { Brand, Btn, Eyebrow, C, DISP, SANS, MONO } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
 import { useLobbyJoin } from "@/lib/game/use-lobby-join";
 import { useNow } from "@/lib/game/use-now";
@@ -142,6 +142,20 @@ export default function QueuePage() {
           >
             {sub}
           </p>
+
+          {/* Buy-in element (SIMULATED — no chain in the demo). Plants the
+              stakes so the settlement reveal at the end pays it off. */}
+          <div
+            className="mx-auto mt-5 inline-flex items-center gap-[10px] rounded-full px-[14px] py-[7px]"
+            style={{ background: C.purpleSoft, border: "1px solid rgba(131,110,249,0.3)" }}
+          >
+            <span style={{ font: `500 12px/1 ${MONO}`, color: C.purple, letterSpacing: "0.08em" }}>
+              ENTRY · 1 MON
+            </span>
+            <span style={{ font: `400 10px/1 ${MONO}`, color: C.faint, letterSpacing: "0.1em" }}>
+              SIMULATED
+            </span>
+          </div>
         </div>
 
         {joinRejectedReason && (

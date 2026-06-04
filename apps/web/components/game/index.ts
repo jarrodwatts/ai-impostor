@@ -4,3 +4,4 @@ export * from "./chat-list";
 export * from "./chat-composer";
 export * from "./vote-target-card";
 export * from "./reveal-grid";
+export * from "./settlement-card";

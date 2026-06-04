@@ -3,13 +3,15 @@
 /**
  * Reveal / who-was-who screen — the money shot and the transition into the
  * pitch. Reads the `settlement` payload from the game store (the only source of
- * agent identities) and unmasks every seat as HUMAN or AGENT. NO pot, NO payout,
- * NO MON, NO tx — the demo has no economics. A "Play again" re-joins as a guest.
+ * agent identities) and unmasks every seat as HUMAN or AGENT. It also shows a
+ * SIMULATED settlement card (SettlementCard) — fake, testnet-preview-badged
+ * economics to illustrate the real-money model; there is no chain in the demo.
+ * A "Play again" re-joins as a guest.
  */
 import { useRouter } from "next/navigation";
 import { Brand, Btn, Eyebrow, C, DISP, SANS, MONO } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
-import { RevealGrid } from "@/components/game";
+import { RevealGrid, SettlementCard } from "@/components/game";
 import { useGameStore } from "@/lib/game/store";
 
 export default function ResultPage() {
@@ -17,6 +19,7 @@ export default function ResultPage() {
   const settlement = useGameStore((s) => s.settlement);
   const mySeatId = useGameStore((s) => s.mySeatId);
   const myVote = useGameStore((s) => s.myVote);
+  const gameId = useGameStore((s) => s.gameId);
 
   if (!settlement) {
     return (
@@ -144,7 +147,15 @@ export default function ResultPage() {
             )}
           </div>
 
-          <div className="mt-9 flex gap-3">
+          <div className="mt-8">
+            <SettlementCard
+              won={votedWasAgent}
+              voted={votedSeat != null}
+              gameId={gameId ?? "demo"}
+            />
+          </div>
+
+          <div className="mt-8 flex gap-3">
             <Btn
               variant="berry"
               style={{ height: 52, padding: "0 30px" }}
