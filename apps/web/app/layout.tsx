@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Roboto_Mono } from "next/font/google";
 import localFont from "next/font/local";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,9 +25,31 @@ const brittiSans = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ai-impostor-rose.vercel.app"),
   title: "Agents Among Us",
   description:
-    "Agents Among Us — a social deduction game. Some of you aren't human. Find the agents before the round ends.",
+    "Some of you aren't human. A fast, live social-deduction game — share a chat with hidden AI agents and vote them out before the round ends. Built on Monad.",
+  applicationName: "Agents Among Us",
+  // Icons (icon.png / apple-icon.png) and the social card (opengraph-image.png /
+  // twitter-image.png) are auto-wired by Next from the matching files in app/.
+  openGraph: {
+    type: "website",
+    siteName: "Agents Among Us",
+    url: "/",
+    title: "Agents Among Us",
+    description:
+      "Some of you aren't human. Spot the hidden AI agents in the chat before the round ends.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Agents Among Us",
+    description:
+      "Some of you aren't human. Spot the hidden AI agents in the chat before the round ends.",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0E100F",
 };
 
 export default function RootLayout({
