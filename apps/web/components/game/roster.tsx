@@ -74,7 +74,7 @@ export function Roster({ className }: { className?: string }) {
 
   return (
     <div
-      className={`flex flex-col gap-[2px] border-r p-4 ${className ?? ""}`}
+      className={`ai-scrollcol flex min-h-0 flex-col gap-[2px] overflow-y-auto border-r p-4 ${className ?? ""}`}
       style={{ borderColor: C.lineSoft, background: "#0C0E0D" }}
     >
       <div className="flex items-center justify-between px-3 pb-3 pt-1">

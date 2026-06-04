@@ -31,7 +31,9 @@ export function PlayShell({ gameId, children }: { gameId: string; children: Reac
 
   return (
     <SendContext.Provider value={send}>
-      <div className="flex min-h-dvh flex-col" style={{ background: C.bg }}>
+      {/* Fixed to the viewport so chat scrolls INSIDE the layout and the HUD +
+          roster + composer stay visible at all times (no page-level scroll). */}
+      <div className="flex h-dvh flex-col overflow-hidden" style={{ background: C.bg }}>
         <HudBar />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
       </div>

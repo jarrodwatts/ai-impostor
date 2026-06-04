@@ -28,11 +28,17 @@ export function ChatList({ className }: { className?: string }) {
 
   return (
     <div
-      className={`ai-scrollcol flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-5 sm:gap-4 sm:px-8 ${className ?? ""}`}
+      className={`ai-scrollcol flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 py-5 sm:gap-4 sm:px-8 ${className ?? ""}`}
     >
       {showPrompt && <ChatMsg system text={promptText} />}
       {messages.map((m) => {
-        if (m.system) return <ChatMsg key={m.msgId} system text={m.text} />;
+        if (m.system) {
+          // The server sends the round prompt as BOTH `round_started` (the banner
+          // above) and a system chat message — skip the duplicate so the prompt
+          // shows exactly once.
+          if (showPrompt && m.text === promptText) return null;
+          return <ChatMsg key={m.msgId} system text={m.text} />;
+        }
         const seat = findSeat(roster, m.seatId);
         if (!seat) return null;
         const p = seatToPlayer(seat, mySeatId);
