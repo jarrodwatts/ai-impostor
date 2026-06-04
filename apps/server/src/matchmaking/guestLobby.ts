@@ -85,7 +85,9 @@ export class GuestLobby {
     if (
       !this.current ||
       this.current.started ||
-      this.current.guests.length >= config.SEATS
+      // Cap humans at MAX_HUMANS (< SEATS) so every lobby keeps at least one AI
+      // seat — a 10-human burst must never produce a lobby with zero agents.
+      this.current.guests.length >= config.MAX_HUMANS
     ) {
       this.openNextLobby();
     }
@@ -140,8 +142,8 @@ export class GuestLobby {
 
     this.broadcastLobbyState(l);
 
-    // If the lobby filled with humans, launch now rather than waiting.
-    if (l.guests.length >= config.SEATS) void this.launch(l);
+    // If the lobby hit the human cap, launch now (AI backfill the rest).
+    if (l.guests.length >= config.MAX_HUMANS) void this.launch(l);
   }
 
   /** Fill empty seats with AI and start the single-round demo game. */

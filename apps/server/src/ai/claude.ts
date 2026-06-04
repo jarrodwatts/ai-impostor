@@ -22,24 +22,15 @@ import type {
  *   - Render order is tools → system → messages; we keep `system` byte-stable
  *     within a game so the cache never invalidates.
  *
- * Model: claude-opus-4-8 with adaptive thinking and low effort (chat replies
- * are short and latency-sensitive — the AgentRunner hides API latency behind
- * the think-delay, but low effort keeps cost/latency bounded).
+ * Model: Haiku by default (see MODEL) — chat replies are short and the demo runs
+ * many agents concurrently, so a fast/cheap model avoids rate limits + latency.
+ * The AgentRunner hides API latency behind the think-delay regardless.
  */
 
-const MODEL = "claude-opus-4-8";
-
-/**
- * Adaptive thinking + low effort, per the claude-api skill guidance for Opus
- * 4.8. The pinned @anthropic-ai/sdk (0.39.0) predates these fields in its
- * request *types*, so we attach them via a loosely-typed extension object and
- * spread it into the create() body. The wire shape is what the API expects;
- * only the local d.ts lags. (No dependency change is permitted in this task.)
- */
-const ADAPTIVE_THINKING = {
-  thinking: { type: "adaptive" },
-  output_config: { effort: "low" },
-} as Record<string, unknown>;
+// Haiku for the live demo: fast + cheap so ~50 concurrent agents (5–6 parallel
+// lobbies × ~9 AI) don't hit rate limits or lag during a 90s round. Short casual
+// banter doesn't need a reasoning model. Override with ANTHROPIC_MODEL if needed.
+const MODEL = process.env.ANTHROPIC_MODEL ?? "claude-haiku-4-5-20251001";
 
 export interface AnthropicLlmOptions {
   apiKey?: string;
@@ -73,8 +64,6 @@ export class AnthropicLlmClient implements LlmClient {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: 256,
-      // Adaptive thinking + low effort (see ADAPTIVE_THINKING note above).
-      ...ADAPTIVE_THINKING,
       system: [
         {
           type: "text",
@@ -110,7 +99,6 @@ export class AnthropicLlmClient implements LlmClient {
     const res = await this.client.messages.create({
       model: this.model,
       max_tokens: 64,
-      ...ADAPTIVE_THINKING,
       system: [
         {
           type: "text",
