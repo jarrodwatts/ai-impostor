@@ -93,6 +93,15 @@ export class Gateway implements LobbyHost {
   private demoLobby: DemoLobby | null = null;
   private guestLobby: GuestLobby | null = null;
   private readonly demo: boolean;
+  /** Lightweight in-process counters used by /metrics. Reset on restart. */
+  private metrics = {
+    connectionsOpened: 0,
+    connectionsClosed: 0,
+    gamesStarted: 0,
+    gamesCompleted: 0,
+    joinsRejectedBusy: 0,
+    startedAtMs: Date.now(),
+  };
 
   constructor(opts: GatewayOptions) {
     this.opts = opts;
@@ -151,6 +160,7 @@ export class Gateway implements LobbyHost {
     const connId = randomUUID();
     const ctx: ConnContext = { connId, ws, alive: true };
     this.conns.set(connId, ctx);
+    this.metrics.connectionsOpened++;
 
     ws.on("pong", () => {
       ctx.alive = true;
@@ -163,6 +173,7 @@ export class Gateway implements LobbyHost {
 
   private onClose(ctx: ConnContext): void {
     this.conns.delete(ctx.connId);
+    this.metrics.connectionsClosed++;
     // Pre-start: drop them from the open lobby (re-indexes remaining seats).
     this.demoLobby?.onDisconnect(ctx.connId);
     this.guestLobby?.onDisconnect(ctx.connId);
@@ -284,10 +295,12 @@ export class Gateway implements LobbyHost {
       repos: this.opts.repos,
       llm: this.opts.llm,
       emitter,
+      onComplete: (id) => this.onGameComplete(id),
       ...(this.opts.scheduler ? { scheduler: this.opts.scheduler } : {}),
     });
     room.game = game;
     this.rooms.set(gameId, room);
+    this.metrics.gamesStarted++;
 
     // Bind human seats to their connections.
     for (const spec of seatSpecs) {
@@ -308,6 +321,65 @@ export class Gateway implements LobbyHost {
   sendToConn(connId: string, ev: ServerEvent): void {
     const ctx = this.conns.get(connId);
     if (ctx) this.send(ctx, ev);
+  }
+
+  /**
+   * LobbyHost capacity check — true when the gateway is at MAX_CONCURRENT_GAMES.
+   * Lobbies use this to refuse new joins with `server_busy` instead of opening
+   * another room. Only counts active rooms (rooms get deleted on Game complete).
+   * Increments the rejected-joins counter as a side effect so /metrics can
+   * surface back-pressure events.
+   */
+  atCapacity(): boolean {
+    const at = this.rooms.size >= config.MAX_CONCURRENT_GAMES;
+    if (at) this.metrics.joinsRejectedBusy++;
+    return at;
+  }
+
+  /**
+   * Prometheus-style metrics snapshot. Process-local counters, reset on
+   * restart. Use scrape every 5-15s. Exposed via GET /metrics.
+   */
+  metricsSnapshot(): string {
+    const m = this.metrics;
+    const uptimeSec = Math.floor((Date.now() - m.startedAtMs) / 1000);
+    const lines = [
+      `# HELP ai_impostor_connections_open Currently open WS connections`,
+      `# TYPE ai_impostor_connections_open gauge`,
+      `ai_impostor_connections_open ${this.conns.size}`,
+      `# HELP ai_impostor_active_rooms Currently running game rooms`,
+      `# TYPE ai_impostor_active_rooms gauge`,
+      `ai_impostor_active_rooms ${this.rooms.size}`,
+      `# HELP ai_impostor_max_concurrent_games Configured concurrent-game cap`,
+      `# TYPE ai_impostor_max_concurrent_games gauge`,
+      `ai_impostor_max_concurrent_games ${config.MAX_CONCURRENT_GAMES}`,
+      `# HELP ai_impostor_connections_opened_total Total WS connections opened`,
+      `# TYPE ai_impostor_connections_opened_total counter`,
+      `ai_impostor_connections_opened_total ${m.connectionsOpened}`,
+      `# HELP ai_impostor_connections_closed_total Total WS connections closed`,
+      `# TYPE ai_impostor_connections_closed_total counter`,
+      `ai_impostor_connections_closed_total ${m.connectionsClosed}`,
+      `# HELP ai_impostor_games_started_total Total games that reached game_started`,
+      `# TYPE ai_impostor_games_started_total counter`,
+      `ai_impostor_games_started_total ${m.gamesStarted}`,
+      `# HELP ai_impostor_games_completed_total Total games that reached settlement/COMPLETE`,
+      `# TYPE ai_impostor_games_completed_total counter`,
+      `ai_impostor_games_completed_total ${m.gamesCompleted}`,
+      `# HELP ai_impostor_joins_rejected_busy_total Joins refused with server_busy (cap hit)`,
+      `# TYPE ai_impostor_joins_rejected_busy_total counter`,
+      `ai_impostor_joins_rejected_busy_total ${m.joinsRejectedBusy}`,
+      `# HELP ai_impostor_uptime_seconds Process uptime since gateway start`,
+      `# TYPE ai_impostor_uptime_seconds gauge`,
+      `ai_impostor_uptime_seconds ${uptimeSec}`,
+      ``,
+    ];
+    return lines.join("\n");
+  }
+
+  /** Drop a finished room from the routing table + bump the completion counter. */
+  private onGameComplete(gameId: string): void {
+    this.rooms.delete(gameId);
+    this.metrics.gamesCompleted++;
   }
 
   /**
@@ -348,12 +420,14 @@ export class Gateway implements LobbyHost {
       llm: this.opts.llm,
       emitter,
       buyInWei: this.demo ? 0n : config.BUY_IN_WEI,
+      onComplete: (id) => this.onGameComplete(id),
       ...(this.demo ? { demo: true } : {}),
       ...(settle ? { settle } : {}),
       ...(this.opts.scheduler ? { scheduler: this.opts.scheduler } : {}),
     });
     room.game = game;
     this.rooms.set(gameId, room);
+    this.metrics.gamesStarted++;
 
     for (const [seatId, connId] of humanConnBySeat) {
       room.seatConns.set(seatId, connId);

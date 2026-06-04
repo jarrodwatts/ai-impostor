@@ -49,6 +49,15 @@ export const config = {
   // Demo: rolling countdown that starts the instant the FIRST human joins a
   // lobby (no min-human wait). ~10s so a scan-burst always launches promptly.
   DEMO_COUNTDOWN_MS: envInt("DEMO_COUNTDOWN_MS", 10_000),
+  /**
+   * Upper bound on simultaneously running game rooms across the process. Once
+   * hit, the lobby refuses new joins with `server_busy` instead of opening yet
+   * another concurrent room (back-pressure for events like the Lisbon offsite,
+   * where a single Node process can hold many rooms but Anthropic rate limits
+   * and CPU/memory eventually do bite). Default 12 → comfortably covers a 90-
+   * person offsite at 10 seats/game with 1-2 headroom rooms.
+   */
+  MAX_CONCURRENT_GAMES: envInt("MAX_CONCURRENT_GAMES", 12),
 
   // ── Round phases ─────────────────────────────────────────────────
   // Demo target: ~90s discussion, ~18s vote (env-overridable for the live demo).

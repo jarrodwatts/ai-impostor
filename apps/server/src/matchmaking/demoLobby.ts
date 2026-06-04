@@ -49,6 +49,14 @@ export interface LobbyHost {
   /** Send a ServerEvent to one connection. */
   sendToConn(connId: string, ev: ServerEvent): void;
   /**
+   * True when the gateway is already running config.MAX_CONCURRENT_GAMES rooms.
+   * Lobbies must refuse new joins (with `server_busy`) instead of opening yet
+   * another concurrent room. Checked at requestJoin/confirmPayment time so the
+   * cap is enforced as back-pressure on the audience rather than as a hard cap
+   * that breaks already-seated players.
+   */
+  atCapacity(): boolean;
+  /**
    * Start a fully-specified game: create the room, bind the given human seats to
    * their connections, construct the Game with the configured buy-in + an
    * on-chain settle hook, and run it. Called once the roster is frozen.
@@ -149,6 +157,14 @@ export class DemoLobby {
 
   /** Client asked to join the current open game. */
   async requestJoin(connId: string, _address: string): Promise<void> {
+    if (this.host.atCapacity()) {
+      this.host.sendToConn(connId, {
+        t: "join_rejected",
+        seq: this.nextSeq(),
+        reason: "server_busy",
+      });
+      return;
+    }
     if (!this.current || this.current.started) {
       // Mid-game: no open lobby right now. Open one if none exists.
       if (!this.current) await this.openNextGame();
