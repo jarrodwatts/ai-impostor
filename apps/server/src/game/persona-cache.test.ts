@@ -7,8 +7,8 @@ import { DEMO_PERSONAS } from "../ai/persona.js";
 
 /**
  * Regression: in guest-demo mode every AI seat is assigned a key from
- * DEMO_PERSONAS (e.g. `demo-firebrand`). The systemPrefixFor() prefix cache was
- * built from PERSONAS only — so the demo keys silently fell back to a single
+ * DEMO_PERSONAS (e.g. `demo-foodie`). The systemPrefixFor() prefix cache was
+ * built from PERSONAS only, so the demo keys silently fell back to a single
  * generic style ("Blend in naturally."), collapsing every AI agent to the same
  * voice. Symptom in production: every AI seat posted near-identical chat lines.
  *
