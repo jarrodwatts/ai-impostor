@@ -126,6 +126,17 @@ export class GuestLobby {
       this.host.sendToConn(connId, this.lobbyOpenEvent(existing));
       return;
     }
+    // Back-pressure: refuse new players when the process is already running the
+    // configured max concurrent games. Already-seated players are unaffected
+    // (we only block this brand-new entry).
+    if (this.host.atCapacity()) {
+      this.host.sendToConn(connId, {
+        t: "join_rejected",
+        seq: this.nextSeq(),
+        reason: "server_busy",
+      });
+      return;
+    }
 
     const l = this.ensureOpenLobby();
     const seatId = `seat-h${l.guests.length}`;

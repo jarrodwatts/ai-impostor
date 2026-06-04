@@ -38,6 +38,8 @@ interface Launch {
 class RecordingHost implements LobbyHost {
   events = new Map<string, ServerEvent[]>();
   launches: Launch[] = [];
+  busy = false;
+  atCapacity(): boolean { return this.busy; }
   sendToConn(connId: string, ev: ServerEvent): void {
     const list = this.events.get(connId) ?? [];
     list.push(ev);

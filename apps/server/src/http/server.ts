@@ -59,6 +59,11 @@ function readBody(req: IncomingMessage, limit = 4096): Promise<string> {
 
 export interface HttpServerDeps {
   chain: ChainService;
+  /**
+   * Optional metrics provider: returns Prometheus text body. Wired by the
+   * bootstrap to point at `gateway.metricsSnapshot()`. Absent → /metrics 404s.
+   */
+  metricsSource?: () => string;
 }
 
 export function createHttpServer(deps: HttpServerDeps): Server {
@@ -79,6 +84,20 @@ export function createHttpServer(deps: HttpServerDeps): Server {
 
     if (method === "GET" && path === "/healthz") {
       sendJson(res, 200, { ok: true }, cors);
+      return;
+    }
+
+    if (method === "GET" && path === "/metrics") {
+      if (!deps.metricsSource) {
+        sendJson(res, 404, { error: "metrics_disabled" }, cors);
+        return;
+      }
+      const body = deps.metricsSource();
+      res.writeHead(200, {
+        "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
+        ...cors,
+      });
+      res.end(body);
       return;
     }
 

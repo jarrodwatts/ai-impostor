@@ -40,7 +40,17 @@ function buildLlm(): LlmClient {
 function mainDemo(port: number, repos: Repositories, llm: LlmClient): void {
   // Inert no-chain service for the HTTP front-door only (faucet won't be used).
   const chain = new FakeChainService();
-  const httpServer = createHttpServer({ chain });
+
+  // Construct gateway BEFORE the http server so /metrics can read live state.
+  // Gateway needs an http server to attach the WS upgrade handler — we create
+  // the http server with a metricsSource closure that resolves the (later-set)
+  // gateway reference.
+  let gatewayRef: Gateway | null = null;
+  const httpServer = createHttpServer({
+    chain,
+    metricsSource: () =>
+      gatewayRef ? gatewayRef.metricsSnapshot() : "# gateway not yet ready\n",
+  });
 
   const gateway = new Gateway({
     repos,
@@ -48,6 +58,7 @@ function mainDemo(port: number, repos: Repositories, llm: LlmClient): void {
     httpServer,
     demo: true, // no chain: guest lobby + single-round demo game
   });
+  gatewayRef = gateway;
   gateway.listen();
 
   httpServer.listen(port, () => {
@@ -90,8 +101,13 @@ function main(): void {
   const signerKey = process.env.GAME_MANAGER_PRIVATE_KEY?.trim();
   const hasSigner = !!signerKey && /^0x[0-9a-fA-F]{64}$/.test(signerKey);
 
-  const httpServer = createHttpServer({ chain });
+  const httpServer = createHttpServer({
+    chain,
+    metricsSource: () =>
+      gatewayRef ? gatewayRef.metricsSnapshot() : "# gateway not yet ready\n",
+  });
 
+  let gatewayRef: Gateway | null = null;
   const gateway = new Gateway({
     repos,
     llm,
@@ -100,6 +116,7 @@ function main(): void {
     ...(chain.live ? { chain } : {}),
     ...(chain.live && hasSigner ? { serverSignerKey: signerKey as `0x${string}` } : {}),
   });
+  gatewayRef = gateway;
   gateway.listen();
 
   httpServer.listen(port, () => {

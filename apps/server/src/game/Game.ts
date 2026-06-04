@@ -65,6 +65,13 @@ export interface GameDeps {
    */
   settle?: (built: BuiltSettlement) => Promise<{ txHash: string | null }>;
   /**
+   * Fired exactly once after the game reaches COMPLETE (both real-settlement
+   * and demo paths). Lets the host clean up its room map + bump metrics so the
+   * gateway can enforce a real `MAX_CONCURRENT_GAMES` cap. Sync — schedule any
+   * async work from inside it; never thrown into.
+   */
+  onComplete?: (gameId: string) => void;
+  /**
    * GUEST DEMO mode. When true the game runs as a single 90s round with a
    * cold-open prompt, bold demo personas, INDEPENDENT (non-bloc) AI votes, and a
    * money-free who-was-who reveal. After the first round resolves it always
@@ -440,6 +447,10 @@ export class Game implements GameBridge {
     });
 
     this.state.phase = "COMPLETE";
+    try { this.deps.onComplete?.(this.state.gameId); } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[game ${this.state.gameId}] onComplete hook threw:`, err);
+    }
   }
 
   /**
@@ -492,6 +503,10 @@ export class Game implements GameBridge {
 
     this.state.outcome = reveal.outcome;
     this.state.phase = "COMPLETE";
+    try { this.deps.onComplete?.(this.state.gameId); } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(`[game ${this.state.gameId}] onComplete hook threw:`, err);
+    }
   }
 
   /** Abort the game (e.g. too many disconnects pre-start). */
