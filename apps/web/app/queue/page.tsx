@@ -15,6 +15,8 @@ import { useRouter } from "next/navigation";
 import { Brand, Btn, Eyebrow, C, DISP, SANS } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
 import { useLobbyJoin } from "@/lib/game/use-lobby-join";
+import { useNow } from "@/lib/game/use-now";
+import { formatCountdown } from "@/lib/game/phase";
 
 export default function QueuePage() {
   const router = useRouter();
@@ -25,11 +27,15 @@ export default function QueuePage() {
     if (status === "seated" && gameId) router.push(`/play/${gameId}`);
   }, [status, gameId, router]);
 
-  const seated = lobby?.humansSeated ?? 0;
-  // Fill is shown against the full table (humans + AI backfill), NOT minHumans
-  // (the launch threshold, which is 1 in the demo and produced "1/1" / "2/1").
+  const now = useNow();
+  // ANTI-LEAK: never display the human count (humansSeated). The demo backfills
+  // the table to `seats` with AI, so "humans/seats" would reveal the human/AI
+  // split — the one thing players must never be told. Show the fixed table size
+  // (public: every game is 10 players) and a countdown to start instead.
   const tableSeats = lobby?.seats ?? 10;
-  const fillLabel = `${seated}/${tableSeats}`;
+  const startsIn = lobby?.countdownEndsAt
+    ? formatCountdown(lobby.countdownEndsAt, now)
+    : null;
 
   const headline = (() => {
     switch (status) {
@@ -38,7 +44,7 @@ export default function QueuePage() {
       case "joining":
         return "Finding your table…";
       case "lobby":
-        return "Table filling…";
+        return "Starting soon…";
       case "seated":
         return "Seated — entering…";
     }
@@ -49,9 +55,9 @@ export default function QueuePage() {
       case "lobby":
         return (
           <>
-            You&apos;re seated.{" "}
-            <span style={{ color: C.text }}>{seated}/{tableSeats}</span>{" "}
-            at the table — some are AI agents, you won&apos;t be told how many.
+            You&apos;re in.{" "}
+            <span style={{ color: C.text }}>{tableSeats} players</span> at the
+            table — some are AI agents, you won&apos;t be told how many.
           </>
         );
       case "seated":
@@ -111,8 +117,14 @@ export default function QueuePage() {
               border: "1px solid rgba(131,110,249,0.5)",
             }}
           >
-            <span style={{ font: `500 26px/1 ${DISP}`, color: C.purple }}>
-              {fillLabel}
+            <span
+              style={{
+                font: `500 ${startsIn ? 22 : 26}px/1 ${DISP}`,
+                color: C.purple,
+                fontVariantNumeric: "tabular-nums",
+              }}
+            >
+              {startsIn ?? tableSeats}
             </span>
           </div>
         </div>
