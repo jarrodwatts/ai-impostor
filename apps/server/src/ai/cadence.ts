@@ -64,7 +64,10 @@ export function computeCadence(
   const seconds = words / (effectiveWpm / 60);
   // Add slight jitter so durations don't look mechanical.
   const jitter = randRange(rng, 0.85, 1.2);
-  const typingMs = Math.round(seconds * 1000 * jitter);
+  // Clamp to a realistic CHAT range: people fire off a one-liner in a couple of
+  // seconds — not at sustained prose speed. Without this cap a long message
+  // "types" for 30s+, leaving dead air and a stalled-looking room.
+  const typingMs = Math.max(700, Math.min(4500, Math.round(seconds * 1000 * jitter)));
   return { thinkMs, typingMs };
 }
 

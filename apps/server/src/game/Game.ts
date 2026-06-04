@@ -258,23 +258,27 @@ export class Game implements GameBridge {
       phaseEndsAt: this.state.phaseEndsAt,
     });
 
-    // Kick off AI chat turns — STAGGERED across the window so each agent
-    // generates after seeing earlier messages (reacts/differs) instead of all
-    // generating against the same empty transcript and converging on one answer.
+    // Kick off AI chat in TWO staggered waves so the conversation starts fast,
+    // stays DENSE, and agents react to each other (each turn generates against
+    // the transcript-so-far). Wave 1 = opening takes; wave 2 = reactions. Each
+    // agent therefore speaks ~twice → a livelier ~90s room, not 9 lonely lines.
     const aiLive = this.state.seatOrder
       .map((id) => this.state.seats.get(id)!)
       .filter((s) => s.isAI && s.alive);
-    const span = Math.floor(config.DISCUSSION_MS * 0.7); // spread over first ~70%
+    const n = aiLive.length;
+    const D = config.DISCUSSION_MS;
+    const gap = (span: number) => (n > 1 ? span / n : 0);
+    const jit = () => Math.floor(this.rngPick() * 1100);
     aiLive.forEach((s, idx) => {
-      const slot = aiLive.length > 1 ? Math.floor((span / aiLive.length) * idx) : 0;
-      const jitter = Math.floor(this.rngPick() * 1400);
-      void this.runner.runChatTurn(
-        s.seatId,
-        s.codename,
-        s.personaKey,
-        round,
-        slot + jitter,
-      );
+      // Wave 1: opening takes across the first ~42% of the window (starts fast).
+      const d1 = 1200 + Math.floor(gap(D * 0.42) * idx) + jit();
+      void this.runner.runChatTurn(s.seatId, s.codename, s.personaKey, round, d1);
+      // Wave 2: reactions across ~45%–85%, offset order so different agents lead.
+      const order2 = (idx + Math.ceil(n / 2)) % n;
+      const d2 = Math.floor(D * 0.45) + Math.floor(gap(D * 0.4) * order2) + jit();
+      if (d2 < D - 3000) {
+        void this.runner.runChatTurn(s.seatId, s.codename, s.personaKey, round, d2);
+      }
     });
 
     this.scheduleAfter(config.DISCUSSION_MS, () => this.lockChat(round));

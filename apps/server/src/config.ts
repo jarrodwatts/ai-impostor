@@ -66,10 +66,10 @@ export const config = {
 
   // ── AI agents ────────────────────────────────────────────────────
   BLOC_COHESION: 1.0, // 1.0 = AI always pile on the same target; lower softens 4-AI draws
-  AI_MIN_THINK_MS: 1_000,
-  AI_MAX_THINK_MS: 6_000,
-  AI_WPM_MIN: 30,
-  AI_WPM_MAX: 70,
+  AI_MIN_THINK_MS: 500,
+  AI_MAX_THINK_MS: 2_500,
+  AI_WPM_MIN: 45,
+  AI_WPM_MAX: 90,
   AI_MAX_CONCURRENT_CALLS: 4,
 
   // ── Connection / reconnect ───────────────────────────────────────
