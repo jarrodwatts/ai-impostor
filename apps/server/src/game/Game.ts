@@ -711,7 +711,11 @@ export const MAX_ROUNDS = 12;
 
 // Persona style lookup, built once from the persona module to avoid importing
 // the array into systemPrefixFor on every call.
-import { PERSONAS } from "../ai/persona.js";
+import { PERSONAS, DEMO_PERSONAS } from "../ai/persona.js";
+// Style lookup for the cached system prefix. MUST include DEMO_PERSONAS:
+// guest-demo lobbies assign keys like `demo-firebrand` via assignDemoPersonas,
+// and a missing entry silently degrades every AI seat to the same fallback
+// ("Blend in naturally."), collapsing all AI output to a single voice.
 const PERSONA_STYLE_CACHE = new Map<string, string>(
-  PERSONAS.map((p) => [p.key, p.style]),
+  [...PERSONAS, ...DEMO_PERSONAS].map((p) => [p.key, p.style]),
 );
