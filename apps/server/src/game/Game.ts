@@ -286,6 +286,11 @@ export class Game implements GameBridge {
 
   private lockChat(round: number): void {
     this.setPhase("CHAT_LOCKED", 0);
+    // Safety net: clear any seat that was still mid-typing when the discussion
+    // ended. Pairs with the asymmetric setTyping() guard so eliminated-mid-
+    // typing OFFs that slipped through don't leak past CHAT_LOCKED. Cheap:
+    // emits one OFF per seat, clients dedupe.
+    this.clearAllTyping();
     this.deps.emitter.broadcast({
       t: "phase_changed",
       seq: this.nextSeq(),
@@ -564,13 +569,42 @@ export class Game implements GameBridge {
 
   setTyping(seatId: string, isTyping: boolean): void {
     const seat = this.state.seats.get(seatId);
-    if (!seat || !seat.alive) return;
+    if (!seat) return;
+    // Asymmetric guard: only the ON broadcast is gated by `alive`. The OFF MUST
+    // always go out, even for a seat that just became !alive — otherwise a
+    // seat eliminated mid-typing (vote resolved between `setTyping(true)` and
+    // `setTyping(false)` in AgentRunner.runChatTurn) leaves clients with a
+    // permanent "typing…" indicator (no further chat_message arrives to clear
+    // the seatId, and no phase reducer clears typingSeatIds in single-round
+    // demo mode). Clearing OFF is always safe.
+    if (isTyping && !seat.alive) return;
     this.deps.emitter.broadcast({
       t: "typing",
       seq: this.nextSeq(),
       seatId,
       isTyping,
     });
+  }
+
+  /**
+   * Broadcast `typing: false` for every seat. Called when the discussion phase
+   * ends so any in-flight AI turn (or human typing-on that was never cleared)
+   * cannot leak past CHAT_LOCKED. Iterates ALL seats (not just alive) — an
+   * eliminated-mid-typing seat whose alive flag flipped before this sweep
+   * also needs its OFF. Redundant OFFs are cheap; the web reducer's typing
+   * set treats a duplicate OFF as a no-op.
+   */
+  private clearAllTyping(): void {
+    for (const id of this.state.seatOrder) {
+      const s = this.state.seats.get(id);
+      if (!s) continue;
+      this.deps.emitter.broadcast({
+        t: "typing",
+        seq: this.nextSeq(),
+        seatId: id,
+        isTyping: false,
+      });
+    }
   }
 
   castVote(

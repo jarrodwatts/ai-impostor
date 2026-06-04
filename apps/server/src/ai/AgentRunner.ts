@@ -195,13 +195,21 @@ export class AgentRunner {
     // 3. Think delay, then show typing.
     await this.scheduler.sleep(cad.thinkMs);
     if (!this.bridge.isDiscussionOpen(round)) return;
+
+    // From here to the matching setTyping(false) below is the typing-on
+    // window. Wrap in try/finally so any future throw (or a swap to a
+    // rejecting scheduler/sleep) cannot leave a permanent "typing…" on
+    // clients. Game.setTyping(false) is safe to call even when the seat is no
+    // longer alive (asymmetric guard) — it always broadcasts OFF.
     this.bridge.setTyping(seatId, true);
+    try {
+      // 4. Length-proportional typing duration.
+      await this.scheduler.sleep(cad.typingMs);
+    } finally {
+      this.bridge.setTyping(seatId, false);
+    }
 
-    // 4. Length-proportional typing duration.
-    await this.scheduler.sleep(cad.typingMs);
-
-    // 5. Post + clear typing (if still open + alive).
-    this.bridge.setTyping(seatId, false);
+    // 5. Post (if still open + alive).
     if (!this.bridge.isDiscussionOpen(round)) return;
     const stillAlive = this.bridge
       .roster()
