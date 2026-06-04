@@ -10,6 +10,8 @@ import { useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
 import { wagmiConfig } from "@/lib/wagmi";
 import { SocketProvider } from "@/lib/ws/socket-provider";
+import { AudioProvider } from "@/lib/audio/audio-provider";
+import { SoundToggle } from "@/components/chrome/sound-toggle";
 
 export function Providers({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -22,7 +24,12 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
       <QueryClientProvider client={queryClient}>
-        <SocketProvider>{children}</SocketProvider>
+        <SocketProvider>
+          <AudioProvider>
+            {children}
+            <SoundToggle />
+          </AudioProvider>
+        </SocketProvider>
       </QueryClientProvider>
     </WagmiProvider>
   );
