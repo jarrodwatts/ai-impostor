@@ -17,13 +17,19 @@
  */
 import { C, DISP, MONO, SANS, Eyebrow } from "@/components/primitives";
 
-// Illustrative full-table economics (NOT derived from the live 1-human demo,
-// which would always resolve to a degenerate "AI win / you lose"). Scaled to a
-// 1,000 MON entry across a 10-seat table.
-const POT = "10,000";
-const ENTRY = "1,000";
-const HOUSE = "400";
-const WIN_PAYOUT = "1,600";
+// Illustrative full-table economics that CONSERVE (payout + house == pot) so the
+// numbers hold up to scrutiny. 10-seat table at 10 MON entry = 100 MON pot.
+//   - win  (you caught an agent): you take the pot minus a 10% house rake
+//           → payout 90 + house 10 == 100
+//   - lose (fooled / no vote): the house keeps the whole pot, you forfeit entry
+//           → your result −10, house 100
+// (NOT derived from the live 1-human demo, which would always resolve to a
+// degenerate "AI win / you lose".)
+const POT = "100";
+const ENTRY = "10";
+const WIN_PAYOUT = "90";
+const WIN_HOUSE = "10";
+const LOSE_HOUSE = "100";
 
 /** Stable fake 0x tx hash derived from the gameId (no randomness, no chain). */
 function fakeTxHash(seed: string): string {
@@ -75,6 +81,7 @@ export function SettlementCard({
 }) {
   const resultColor = won ? C.purple : C.berryHi;
   const resultValue = won ? `+${WIN_PAYOUT} MON` : `−${ENTRY} MON`;
+  const houseValue = won ? `${WIN_HOUSE} MON` : `${LOSE_HOUSE} MON`;
   const resultLabel = won
     ? "Bounty — you caught an agent"
     : voted
@@ -95,7 +102,7 @@ export function SettlementCard({
         <Row label="YOUR ENTRY" value={`${ENTRY} MON`} color={C.muted} />
         <div style={{ height: 1, background: C.lineSoft, margin: "2px 0" }} />
         <Row label="RESULT" value={resultValue} color={resultColor} strong />
-        <Row label="HOUSE TAKE" value={`${HOUSE} MON`} color={C.muted} />
+        <Row label="HOUSE TAKE" value={houseValue} color={C.muted} />
       </div>
 
       <p className="mt-3" style={{ font: `400 12px/1.4 ${SANS}`, color: resultColor }}>
