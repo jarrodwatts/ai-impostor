@@ -4,8 +4,8 @@
  * SettlementCard — a SIMULATED on-chain settlement for the demo. The hackathon
  * build has no chain, so there is no real pot, payout, or transaction. This
  * card fakes the economics purely client-side to SHOW what a real-money round
- * would look like (buy-in → pot → outcome-driven payout → house take), clearly
- * badged "testnet preview" so it never reads as a real settlement.
+ * would look like (buy-in → pot → outcome-driven payout → house take). The
+ * numbers are illustrative; the tx hash is fabricated, not a real on-chain tx.
  *
  * Numbers are illustrative, scaled to a full 10-seat table (10 × 1 MON entry),
  * and the result line mirrors the viewer's own read of the table:
@@ -18,11 +18,12 @@
 import { C, DISP, MONO, SANS, Eyebrow } from "@/components/primitives";
 
 // Illustrative full-table economics (NOT derived from the live 1-human demo,
-// which would always resolve to a degenerate "AI win / you lose").
-const POT = "10.00";
-const ENTRY = "1.00";
-const HOUSE = "0.40";
-const WIN_PAYOUT = "1.60";
+// which would always resolve to a degenerate "AI win / you lose"). Scaled to a
+// 1,000 MON entry across a 10-seat table.
+const POT = "10,000";
+const ENTRY = "1,000";
+const HOUSE = "400";
+const WIN_PAYOUT = "1,600";
 
 /** Stable fake 0x tx hash derived from the gameId (no randomness, no chain). */
 function fakeTxHash(seed: string): string {
@@ -85,20 +86,8 @@ export function SettlementCard({
       className="w-full max-w-sm rounded-2xl p-5"
       style={{ background: C.card, border: `1px solid ${C.line}` }}
     >
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4">
         <Eyebrow color={C.faint}>SETTLEMENT</Eyebrow>
-        <span
-          className="rounded-full px-[10px] py-1"
-          style={{
-            font: `400 9px/1 ${MONO}`,
-            letterSpacing: "0.14em",
-            color: C.faint,
-            background: C.purpleSoft,
-            border: "1px solid rgba(131,110,249,0.3)",
-          }}
-        >
-          TESTNET PREVIEW
-        </span>
       </div>
 
       <div className="flex flex-col gap-[10px]">
@@ -114,14 +103,11 @@ export function SettlementCard({
       </p>
 
       <div
-        className="mt-4 flex items-center justify-between border-t pt-3"
+        className="mt-4 flex items-center border-t pt-3"
         style={{ borderColor: C.lineSoft }}
       >
         <span style={{ font: `400 11px/1 ${MONO}`, color: C.faint, letterSpacing: "0.04em" }}>
-          tx {fakeTxHash(gameId)}
-        </span>
-        <span style={{ font: `400 10px/1 ${MONO}`, color: C.faint, letterSpacing: "0.08em" }}>
-          SIMULATED
+          tx {fakeTxHash(gameId)} ↗
         </span>
       </div>
     </div>

@@ -150,10 +150,7 @@ export default function QueuePage() {
             style={{ background: C.purpleSoft, border: "1px solid rgba(131,110,249,0.3)" }}
           >
             <span style={{ font: `500 12px/1 ${MONO}`, color: C.purple, letterSpacing: "0.08em" }}>
-              ENTRY · 1 MON
-            </span>
-            <span style={{ font: `400 10px/1 ${MONO}`, color: C.faint, letterSpacing: "0.1em" }}>
-              SIMULATED
+              ENTRY · 1,000 MON
             </span>
           </div>
         </div>
