@@ -185,6 +185,9 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         round: ev.round,
         phase: ev.phase,
         phaseEndsAt: ev.phaseEndsAt,
+        // Clear typing on any phase change — a dropped typing:false must never
+        // strand the indicator past the phase it belonged to.
+        typingSeatIds: [],
         lastSeq: ev.seq,
       };
 
@@ -249,6 +252,7 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         lastEliminatedSeatIds: ev.eliminatedSeatIds,
         gameOver: ev.gameOver,
         viewerStatus: meEliminated ? "spectator" : state.viewerStatus,
+        typingSeatIds: [],
         roster: state.roster.map((s) =>
           ev.eliminatedSeatIds.includes(s.seatId) ? { ...s, alive: false } : s,
         ),
@@ -257,7 +261,7 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
     }
 
     case "you_eliminated":
-      return { ...state, viewerStatus: "spectator" };
+      return { ...state, viewerStatus: "spectator", typingSeatIds: [] };
 
     case "settlement": {
       // The reveal payload is `unknown` on the wire (ServerEvent only validates
@@ -272,6 +276,7 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         ...state,
         phase: "SETTLEMENT",
         settlement: parsed.data,
+        typingSeatIds: [],
         lastSeq: ev.seq,
       };
     }
