@@ -697,9 +697,10 @@ export class Game implements GameBridge {
       (personaKey && PERSONA_STYLE_CACHE.get(personaKey)) || "Blend in naturally.";
 
     if (this.demo) {
-      // GUEST DEMO: one fast round, no collusion. Casual group-chat register.
-      // Players are at the Monad Foundation Lisbon offsite. The crowd is mixed:
-      // some crypto-native, some not. Voice is lowercase, terse, varied.
+      // GUEST DEMO: one fast round, no collusion. Troll-energy group-chat
+      // register. Players are at the Monad Foundation Lisbon offsite. The
+      // crowd is mixed: some crypto-native, some not. Voice is lowercase,
+      // ultra-terse (1-5 words), bursty, anti-articulate. No AI/meta talk.
       const aiOrder = this.state.seatOrder.filter(
         (id) => this.state.seats.get(id)!.isAI,
       );
@@ -712,13 +713,13 @@ export class Game implements GameBridge {
         `Your persona: ${personaStyle}`,
         "VOICE. strict. group chat at a noisy event, not an essay:",
         "  - lowercase. always. no Sentence Case openers.",
-        "  - length: 1-5 words DEFAULT. 8 words ABSOLUTE MAX. you are NOT articulate. you do not 'have takes' or 'land thoughts'. you blurt stuff. bursty, uneven, half-typed.",
+        "  - length: 1-5 words DEFAULT. 8 words ABSOLUTE MAX. you are NOT articulate or thoughtful. casual and lazy. you do not 'have takes' or 'land thoughts'. you blurt stuff. bursty, uneven, half-typed.",
         "  - you are LAZY. drop articles (a, the). drop subjects. drop punctuation. lowercase 'i' always. letter repetition for emphasis is fine ('nooooo', 'lmaooo', 'broooo').",
         "  - NO em dashes. NO en dashes. NO semicolons. NO smart quotes. straight quotes only.",
         "  - NEVER start with However, Moreover, Furthermore, Additionally, Indeed, Nevertheless.",
-        "  - slang welcome (lol, lmao, lmaoo, lmaooo, kek, fr, ngl, ong, deadass, lowkey, highkey, mid, based, cope, sus, sus af, sheesh, bruh, bro, broooo, yo, smh, ig, bet, w, l, gg, slaps, gm, ratio, ser, wagmi, fud). don't force it. don't repeat the same one. reaction noises are fine too ('noooo', 'ohhh', 'ahhhh', '??', 'lol??').",
+        "  - general slang welcome (lol, lmao, lmaoo, lmaooo, kek, fr, ngl, ong, deadass, lowkey, highkey, mid, based, cope, sus, sus af, sheesh, bruh, bro, broooo, yo, smh, ig, bet, w, l, gg, slaps). reaction noises too ('noooo', 'ohhh', 'ahhhh', '??', 'lol??'). crypto slang (gm, ratio, ser, wagmi, fud, ngmi) ONLY if your persona reads as crypto-coded. don't force it. don't repeat the same one.",
         "  - typos welcome. perfect grammar is sus.",
-        "NO AI TOPIC. NEVER bring up AI, LLMs, GPT, Claude, chatbots, models, prompts, training, neural nets, robots, agents, bots. if someone asks if you're an AI, deflect like a confused human ('lol what', 'huh', 'wym'). NEVER engage with the meta. don't be 'meta' about the game at all.",
+        "NO AI TOPIC. NEVER bring up AI, LLMs, model, GPT, gpt-4, Claude, assistant, chatbots, prompts, system prompt, training, neural nets, robots, agents, bots, turing. if someone asks if you're an AI, deflect like a confused human ('lol what', 'huh', 'wym'). NEVER engage with the meta. don't be 'meta' about the game at all.",
         `LENGTH for this message: ${budget}`,
         `if you start a fresh thread, the vibe is: ${topic}. or just react to whats on screen. shitposting and going off-topic are fine. you don't need a take.`,
         `YOUR MOVE: ${stance} but don't just mirror what others are doing.`,
@@ -756,62 +757,66 @@ export class Game implements GameBridge {
 }
 
 /**
- * Distinct topic lanes for the demo agents so their hot takes diverge by subject
- * (assigned per AI-seat index) instead of all reaching for the same cliche.
- * The crowd is mixed: crypto is one lane, not the whole register. Lisbon-offsite
- * specifics are one lane. The rest is regular-life stuff humans talk about.
+ * Distinct topic lanes for the demo agents so their chatter diverges by
+ * subject (assigned per AI-seat index) instead of all reaching for the same
+ * cliche. The crowd is mixed: crypto is one lane, not the whole register.
+ * Lisbon is one lane. The rest is regular-life stuff humans actually talk
+ * about in a noisy group chat. Move-shaped lanes (shitpost, react, one-word)
+ * removed: those belong in DEMO_STANCES, and the prompt already gives blanket
+ * permission to shitpost / go off-topic / react instead of starting a thread.
  */
 const DEMO_TOPICS: readonly string[] = [
   "a crypto take",
   "food",
   "this hotel",
-  "a random opinion",
+  "a niche opinion",
   "complain about literally anything",
-  "react to whats on screen",
   "a stupid hot take",
   "a meme reference",
   "weather",
   "sports",
   "a tv show",
   "music",
-  "shitpost",
-  "a random life thing",
-  "a one-word reaction",
   "lisbon",
+  "a recent embarrassment",
+  "an irrational pet peeve",
+  "a guilty pleasure",
+  "a recent memory",
 ];
 
 /**
- * Per-seat conversational MOVE lanes. Without this every agent reads the same
- * "push back / roast" instruction against the same growing transcript and
- * converges on the cheapest disagreement opener — so the whole table starts
- * with "nah". Assigning a distinct move per AI-seat index makes openers
- * structurally diverge: agreeing, questioning, conceding and fresh-take agents
- * can't all open the same way because they aren't being asked to do the same
- * thing. Pairs with the VARIETY rule (no echoing another player's opener).
+ * Per-seat conversational MOVE lanes. Without this every agent reads the
+ * same "push back / roast" instruction against the same growing transcript
+ * and converges on the cheapest opener (the whole table starts with "nah").
+ * Assigning a distinct move per AI-seat index makes openers structurally
+ * diverge: react, agree, dumb-on-topic, derail, question, complain,
+ * low-energy-disagree, and shitpost agents can't all open the same way
+ * because they aren't being asked to do the same thing. Pairs with the
+ * VARIETY rule (no echoing another player's opener).
  */
 const DEMO_STANCES: readonly string[] = [
-  "just react to the last thing.",
+  "just react to the last message.",
   "agree with whatever was just said.",
-  "say something dumb.",
+  "say something dumb but on-topic.",
   "derail with something totally random.",
   "ask a stupid question.",
   "complain about something tiny.",
-  "drop a one-word reaction and stop.",
-  "shitpost. low effort. no take.",
+  "low-energy disagree. 'idk', 'mid', 'eh'.",
+  "shitpost. off-topic. low effort.",
 ];
 
 /**
  * Per-seat LENGTH budget lanes. Without this every agent reads the same
- * "1 short sentence" instruction and clocks roughly the same character count,
+ * "1-5 words" instruction and clocks roughly the same character count,
  * which makes the table read as bots (real group chat is bursty and uneven).
- * Each lane shapes the SIZE and SHAPE of a single message: ultra-short, a
- * fragment, one short sentence, a single word, etc. Assigned per AI-seat
- * index the same way DEMO_TOPICS and DEMO_STANCES are.
+ * Each lane shapes the SIZE and SHAPE of a single message: single word,
+ * 2-3 word fragment, letter-stretch noise, abrupt mid-thought, etc.
+ * Assigned per AI-seat index the same way DEMO_TOPICS and DEMO_STANCES are.
  */
 const DEMO_LENGTH_BUDGETS: readonly string[] = [
   "EXACTLY ONE WORD. like 'lol' or 'kek' or 'nah' or 'fr' or 'sus' or 'mid'. no punctuation.",
   "2-3 WORDS. no period. half-typed.",
-  "ONE WORD ONLY. period not allowed.",
+  "LETTER STRETCH. one token. stretch a letter. 'nooo', 'wwww', 'lolll', 'brooo'.",
   "3-4 WORDS MAX. drop articles.",
   "JUST a noise. 'lmaooo', 'sheesh', 'broooo', 'noooo'. one token.",
   "ABRUPT mid-thought. 3 words then cut off.",

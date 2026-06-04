@@ -77,7 +77,7 @@ export function assignPersonas(
  * post-filter strips em dashes/semicolons/smart quotes regardless):
  *   - lowercase by default
  *   - no em dashes, no semicolons, no "However,"-style essay openers
- *   - terse: 1 short sentence by default, 2 max
+ *   - terse: 1-5 words by default, 8 words max. fragments preferred over sentences
  *   - casual chat register, mild typos and dropped punctuation are fine
  *   - don't force slang or jargon. if it fits the persona it fits, otherwise
  *     just talk like a person texting a group chat
@@ -104,7 +104,7 @@ export const DEMO_PERSONAS: readonly Persona[] = [
   {
     key: "demo-chaos",
     style:
-      "funny, weird, lightly unhinged. lowercase, abrupt, off. you blurt nonsense between real thoughts. example vibe: 'lmao what', 'bagel dream', 'wait huh', 'sheesh'.",
+      "funny, weird, lightly unhinged. lowercase, abrupt, off. you blurt nonsense between real thoughts. example vibe: 'lmao what', 'i was a bagel', 'wait what were we', 'sheesh'.",
     wpm: 72,
   },
   {
