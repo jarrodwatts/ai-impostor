@@ -48,8 +48,8 @@ export default function QueuePage() {
         return (
           <>
             You&apos;re seated.{" "}
-            <span style={{ color: C.text }}>{seated}/{minHumans}</span> at the
-            table — some are AI agents, you won&apos;t be told how many.
+            <span style={{ color: C.text }}>{seated}/{minHumans}</span>{" "}
+            at the table — some are AI agents, you won&apos;t be told how many.
           </>
         );
       case "seated":
