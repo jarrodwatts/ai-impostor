@@ -167,8 +167,17 @@ export class AgentRunner {
     codename: string,
     personaKey: string | null,
     round: number,
+    startDelayMs = 0,
   ): Promise<void> {
     if (!this.bridge.isDiscussionOpen(round)) return;
+
+    // 0. Staggered start — wait our slot BEFORE generating so each agent sees
+    // (and reacts to) the messages already posted, instead of every agent
+    // generating against the same empty transcript and converging on one answer.
+    if (startDelayMs > 0) {
+      await this.scheduler.sleep(startDelayMs);
+      if (!this.bridge.isDiscussionOpen(round)) return;
+    }
 
     // 1. GENERATE FIRST — absorbs Claude latency before we show typing.
     const persona = personaKey ? personaByKey(personaKey) : undefined;

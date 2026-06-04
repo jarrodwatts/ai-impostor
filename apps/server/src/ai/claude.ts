@@ -92,7 +92,9 @@ export class AnthropicLlmClient implements LlmClient {
               text:
                 `Live chat so far:\n${renderTranscript(req.transcript)}\n\n` +
                 `You are "${req.selfCodename}". Write your next single chat message, in character, ` +
-                `under ${req.maxChars} characters. Output ONLY the message text — no quotes, no name prefix.`,
+                `under ${req.maxChars} characters. React to the conversation above — do NOT repeat any ` +
+                `point, joke, or topic already raised; bring something new. ` +
+                `Output ONLY the message text — no quotes, no name prefix.`,
               // Incrementally cache the transcript-so-far prefix.
               cache_control: { type: "ephemeral" },
             },
