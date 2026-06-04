@@ -138,6 +138,7 @@ export class MockGameSocket implements GameSocket {
           buyInWei: "0",
           minHumans: MOCK_MIN_HUMANS,
           humansSeated: MOCK_MIN_HUMANS,
+          seats: 10,
         }),
     });
 
