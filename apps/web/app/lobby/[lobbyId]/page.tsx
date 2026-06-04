@@ -73,7 +73,7 @@ export default function LobbyPage() {
         {/* forming table */}
         <div className="flex flex-col justify-center px-6 py-12 lg:border-r lg:px-14" style={{ borderColor: C.lineSoft }}>
           <Eyebrow color={C.purple}>TABLE #{lobbyId} · FORMING</Eyebrow>
-          <h1 className="mt-4 text-4xl lg:text-[52px]" style={{ font: `500 1em/1 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}>
+          <h1 className="mt-4 text-4xl lg:text-[52px]" style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", color: C.text }}>
             Starts in{" "}
             <span style={{ fontVariantNumeric: "tabular-nums" }}>{formatCountdown(endsAt, now)}</span>
           </h1>

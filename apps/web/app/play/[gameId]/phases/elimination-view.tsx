@@ -30,7 +30,7 @@ export function EliminationView() {
 
       <div className="max-w-md">
         <Eyebrow color={C.faint}>ROUND {round} · RESULT</Eyebrow>
-        <h1 className="mt-3 text-3xl lg:text-[44px]" style={{ font: `500 1em/1.04 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}>
+        <h1 className="mt-3 text-3xl lg:text-[44px]" style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1.04, letterSpacing: "-0.03em", color: C.text }}>
           {seat ? `${seat.codename} was voted out.` : "Votes are in."}
         </h1>
         <p className="mb-6 mt-[14px]" style={{ font: `400 16px/1.55 ${SANS}`, color: C.muted }}>

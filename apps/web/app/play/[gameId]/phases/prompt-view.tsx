@@ -20,7 +20,7 @@ export function PromptView() {
       <Eyebrow color={C.purple}>ROUND {round} · PROMPT</Eyebrow>
       <h1
         className="max-w-3xl text-3xl lg:text-[52px]"
-        style={{ font: `500 1em/1.12 ${DISP}`, letterSpacing: "-0.03em", color: C.text, textWrap: "balance" }}
+        style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1.12, letterSpacing: "-0.03em", color: C.text, textWrap: "balance" }}
       >
         {promptText ? `“${promptText}”` : "Get ready…"}
       </h1>

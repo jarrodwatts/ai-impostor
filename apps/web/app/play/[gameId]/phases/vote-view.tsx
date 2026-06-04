@@ -40,7 +40,7 @@ export function VoteView() {
     <div className="relative flex flex-1 flex-col items-center justify-center px-5 py-8">
       <div className="mb-6 text-center">
         <Eyebrow color={C.berryHi}>CAST YOUR VOTE</Eyebrow>
-        <h1 className="mt-3 text-3xl lg:text-[44px]" style={{ font: `500 1em/1 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}>
+        <h1 className="mt-3 text-3xl lg:text-[44px]" style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1, letterSpacing: "-0.03em", color: C.text }}>
           Who is the AI?
         </h1>
         <p className="mt-[6px]" style={{ font: `400 14px/1.5 ${SANS}`, color: C.muted }}>

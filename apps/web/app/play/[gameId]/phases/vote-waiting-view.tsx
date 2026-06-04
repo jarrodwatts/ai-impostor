@@ -20,7 +20,7 @@ export function VoteWaitingView() {
         </svg>
       </div>
       <div>
-        <h1 className="text-3xl lg:text-[44px]" style={{ font: `500 1em/1.05 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}>
+        <h1 className="text-3xl lg:text-[44px]" style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1.05, letterSpacing: "-0.03em", color: C.text }}>
           Vote locked.
         </h1>
         <p className="mx-auto mt-3 max-w-sm" style={{ font: `400 15px/1.55 ${SANS}`, color: C.muted }}>

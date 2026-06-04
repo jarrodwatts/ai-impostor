@@ -118,7 +118,7 @@ export default function QueuePage() {
         <div className="text-center">
           <h1
             className="text-3xl lg:text-[40px]"
-            style={{ font: `500 1em/1.05 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}
+            style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 1.05, letterSpacing: "-0.03em", color: C.text }}
           >
             {headline}
           </h1>

@@ -115,7 +115,7 @@ export default function ResultPage() {
             </div>
             <h1
               className="text-5xl lg:text-[74px]"
-              style={{ font: `500 1em/0.96 ${DISP}`, letterSpacing: "-0.04em", color: C.text }}
+              style={{ fontFamily: DISP, fontWeight: 500, lineHeight: 0.96, letterSpacing: "-0.04em", color: C.text }}
             >
               Agents <span style={{ color: C.berryHi }}>among us.</span>
             </h1>

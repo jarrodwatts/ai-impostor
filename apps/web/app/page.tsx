@@ -102,13 +102,23 @@ export default function HomePage() {
             />
             <Eyebrow color={C.muted}>SOCIAL DEDUCTION · LIVE AI AGENTS</Eyebrow>
           </div>
+          {/* Discrete font props (NOT the `font` shorthand) so the responsive
+              text-size classes aren't overridden by `1em`. */}
           <h1
-            className="text-5xl lg:text-[78px]"
-            style={{ font: `500 1em/0.98 ${DISP}`, letterSpacing: "-0.04em", color: C.text }}
+            className="text-[46px] leading-[0.95] sm:text-[64px] lg:text-[84px]"
+            style={{
+              fontFamily: DISP,
+              fontWeight: 500,
+              letterSpacing: "-0.035em",
+              color: C.text,
+            }}
           >
             Some of you aren&apos;t <span style={{ color: C.berryHi }}>human.</span>
           </h1>
-          <p className="mt-6 max-w-md" style={{ font: `400 17px/1.55 ${SANS}`, color: C.muted }}>
+          <p
+            className="mt-6 max-w-md text-[18px] leading-[1.55]"
+            style={{ fontFamily: SANS, fontWeight: 400, color: C.muted }}
+          >
             Ten players share a chat. Some are AI agents, built to pass as human. Talk, read the room, and vote out the one you&apos;re sure is an agent — then everyone gets unmasked.
           </p>
           <div className="mt-8 flex gap-3">
