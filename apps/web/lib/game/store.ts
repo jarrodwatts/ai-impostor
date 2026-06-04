@@ -185,6 +185,11 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         round: ev.round,
         phase: ev.phase,
         phaseEndsAt: ev.phaseEndsAt,
+        // Safety net: no seat may remain in `typingSeatIds` once chat locks.
+        // The server now also sweeps typing-off before broadcasting this event,
+        // but clearing here makes the client robust to a missed OFF (network
+        // jitter, throttled tab, dropped frame).
+        typingSeatIds: [],
         lastSeq: ev.seq,
       };
 
@@ -247,6 +252,13 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         prevPotHealthPct: state.potHealthPct,
         potHealthPct: ev.potHealthPct,
         lastEliminatedSeatIds: ev.eliminatedSeatIds,
+        // Defensive: eliminated seats cannot be typing. In practice the
+        // phase_changed handler above already cleared the array; this filter
+        // is insurance against a missed phase_changed or a future flow that
+        // bypasses the lock-chat sweep.
+        typingSeatIds: state.typingSeatIds.filter(
+          (id) => !ev.eliminatedSeatIds.includes(id),
+        ),
         gameOver: ev.gameOver,
         viewerStatus: meEliminated ? "spectator" : state.viewerStatus,
         roster: state.roster.map((s) =>
@@ -257,7 +269,18 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
     }
 
     case "you_eliminated":
-      return { ...state, viewerStatus: "spectator" };
+      // Defensive: drop the viewer's own seat from typing if they had pressed
+      // ON before being eliminated. Strict no-op in current wire order
+      // (phase_changed:CHAT_LOCKED clears typingSeatIds first), but cheap
+      // insurance against a dropped frame.
+      return {
+        ...state,
+        viewerStatus: "spectator",
+        typingSeatIds:
+          state.mySeatId != null
+            ? state.typingSeatIds.filter((id) => id !== state.mySeatId)
+            : state.typingSeatIds,
+      };
 
     case "settlement": {
       // The reveal payload is `unknown` on the wire (ServerEvent only validates
@@ -272,6 +295,8 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
         ...state,
         phase: "SETTLEMENT",
         settlement: parsed.data,
+        // Final flush — no seat may appear as "typing…" on the reveal.
+        typingSeatIds: [],
         lastSeq: ev.seq,
       };
     }
