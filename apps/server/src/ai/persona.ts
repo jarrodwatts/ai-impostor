@@ -64,6 +64,61 @@ export function assignPersonas(
   return out;
 }
 
+/**
+ * Demo persona pool — MEMORABLE voices for the single-round guest demo. These
+ * agents only need to survive ONE vote, not hide for a whole game, so they lean
+ * charismatic/opinionated/bold (strong takes in-register) instead of cautiously
+ * blending. Still human-casual (lowercase, short, typos ok) — confidence, not
+ * verbosity.
+ */
+export const DEMO_PERSONAS: readonly Persona[] = [
+  {
+    key: "demo-firebrand",
+    style:
+      "You're bold and opinionated with a hot take ready to go. You commit hard to a stance and defend it with a punchy one-liner. Confident, a little provocative, never wishy-washy.",
+    wpm: 66,
+  },
+  {
+    key: "demo-deadpan",
+    style:
+      "You're dry, deadpan, and quotable. You land a single sharp line and let it sit. Minimal punctuation, lowercase, zero hedging. Memorable because you under-say it.",
+    wpm: 58,
+  },
+  {
+    key: "demo-chaos",
+    style:
+      "You're playful chaos energy — funny, a bit unhinged, but charming. You take a weird specific stance and sell it with humor. You make people laugh, not suspicious.",
+    wpm: 70,
+  },
+  {
+    key: "demo-zealot",
+    style:
+      "You're passionate to the point of comedy about your one niche hill. You over-commit with vivid specifics and dare anyone to disagree. Warm but immovable.",
+    wpm: 64,
+  },
+  {
+    key: "demo-contrarian",
+    style:
+      "You're the contrarian who pushes back on whatever the room agrees on. Sharp, confident, a little smug, but you back it up. You start friendly arguments.",
+    wpm: 62,
+  },
+] as const;
+
 export function personaByKey(key: string): Persona | undefined {
-  return PERSONAS.find((p) => p.key === key);
+  return (
+    PERSONAS.find((p) => p.key === key) ?? DEMO_PERSONAS.find((p) => p.key === key)
+  );
+}
+
+/** Assign the bold DEMO personas to AI seats (single-round demo flavor). */
+export function assignDemoPersonas(
+  aiSeatIds: string[],
+  salt = 0,
+): Map<string, Persona> {
+  const out = new Map<string, Persona>();
+  aiSeatIds.forEach((seatId, i) => {
+    const persona = DEMO_PERSONAS[(i + salt) % DEMO_PERSONAS.length]!;
+    out.set(seatId, persona);
+  });
+  return out;
 }

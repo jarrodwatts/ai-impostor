@@ -1,37 +1,32 @@
 "use client";
 
 /**
- * Share card (ShareDesktop/ShareMobile). Builds a shareable result card from the
- * settlement reveal in the store (win/loss, AI caught, rounds, net MON). Share /
- * copy-link actions + play-again. Reveal data is post-game only, so showing AI
- * avatars here is allowed.
+ * Share card. Builds a shareable result from the settlement reveal in the store
+ * (agents caught / round outcome). NO MON, no payout — the demo has no economics.
+ * Reveal data is post-game only, so showing agent avatars here is allowed.
  */
 import { useParams, useRouter } from "next/navigation";
 import { Avatar, Brand, Btn, Eyebrow, Tag, GridBG, C, DISP, SANS, MONO } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
 import { useGameStore } from "@/lib/game/store";
-import { formatMon } from "@/lib/chain/use-escrow";
 
 export default function SharePage() {
   const router = useRouter();
   const params = useParams<{ gameId: string }>();
   const gameId = params.gameId;
   const settlement = useGameStore((s) => s.settlement);
+  const myVote = useGameStore((s) => s.myVote);
 
-  const isWin = settlement?.outcome === "HUMAN_WIN";
-  const aiCaught = settlement?.aiReveal.length ?? 0;
-  const aiTotal = settlement?.aiReveal.length ?? 0;
-  const buyInWei = settlement ? BigInt(settlement.pool.buyIn) : 0n;
-  const payoutWei = settlement?.myPayout != null ? BigInt(settlement.myPayout) : 0n;
-  const netWei = payoutWei - buyInWei;
-  const netStr = `${netWei >= 0n ? "+" : "−"}${formatMon(netWei < 0n ? -netWei : netWei)}`;
+  const agentTotal = settlement?.aiReveal.length ?? 0;
+  const votedSeat = myVote != null ? settlement?.roster.find((s) => s.seatId === myVote) : undefined;
+  const votedRight = votedSeat?.wasAI ?? false;
   const aiSeatIds = settlement?.aiReveal ?? [];
   const aiSeats = (settlement?.roster ?? []).filter((s) => aiSeatIds.includes(s.seatId));
 
-  const headline = isWin ? "I caught the AI." : "The AI got me.";
-  const blurb = isWin
-    ? "Read the room, fingered the impostors, walked with a profit."
-    : "They blended in until parity. Next time.";
+  const headline = votedRight ? "I spotted the agent." : "The agents fooled me.";
+  const blurb = votedRight
+    ? "Read the room, called the agent, and watched the table get unmasked."
+    : "They passed as human right up to the reveal. Next time.";
 
   const copyLink = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
@@ -42,7 +37,7 @@ export default function SharePage() {
   };
   const share = () => {
     if (typeof navigator !== "undefined" && "share" in navigator) {
-      void (navigator as Navigator).share?.({ title: "AI Impostor", text: headline });
+      void (navigator as Navigator).share?.({ title: "Agents Among Us", text: headline });
     } else {
       copyLink();
     }
@@ -66,20 +61,20 @@ export default function SharePage() {
           <div className="relative p-8 lg:px-10 lg:py-9">
             <div className="flex items-center justify-between">
               <Brand size={16} sub={false} />
-              <Tag tone={isWin ? "purple" : "ai"}>{isWin ? "WIN" : "LOSS"}</Tag>
+              <Tag tone={votedRight ? "purple" : "ai"}>{votedRight ? "READ IT" : "FOOLED"}</Tag>
             </div>
             <div className="my-7" style={{ font: `500 44px/1 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}>
               {headline}
             </div>
             <p style={{ font: `400 15px/1.5 ${SANS}`, color: C.muted }}>{blurb}</p>
             <div className="mt-7 flex gap-10">
-              <CardStat value={netStr} label="MON NET" win={isWin} />
-              <CardStat value={`${aiCaught}/${aiTotal}`} label="AI CAUGHT" win={isWin} />
-              <CardStat value="3" label="ROUNDS" win={isWin} />
+              <CardStat value={`${agentTotal}`} label="AGENTS" win={votedRight} />
+              <CardStat value={votedRight ? "✓" : "✗"} label="YOUR CALL" win={votedRight} />
+              <CardStat value="1" label="ROUND" win={votedRight} />
             </div>
             <div className="mt-7 flex items-center justify-between border-t pt-5" style={{ borderColor: C.lineSoft }}>
               <span style={{ font: `500 11px/1 ${MONO}`, letterSpacing: "0.14em", color: C.faint }}>
-                PLAY AT AIIMPOSTOR.XYZ
+                AGENTS AMONG US
               </span>
               <div className="flex">
                 {aiSeats.map((s, i) => (

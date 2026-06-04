@@ -10,7 +10,6 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Brand, Btn, Eyebrow, C, DISP, SANS, MONO } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
-import { WalletChip } from "@/components/chrome/wallet-button";
 import { formatCountdown } from "@/lib/game/phase";
 import { useNow } from "@/lib/game/use-now";
 
@@ -46,7 +45,7 @@ function LobbySeat({ filled, you, idx }: { filled: number; you: boolean; idx: nu
 const RULES: Array<[string, string, string]> = [
   ["01", "Talk it out", "Each round opens with a prompt. Chat freely for ~2 minutes."],
   ["02", "Vote in secret", "One vote each. Most votes is eliminated. Nobody sees who voted."],
-  ["03", "Humans win", "Vote out every AI before they reach parity, and split the pool."],
+  ["03", "The reveal", "Every seat is unmasked — human or agent. See who fooled you."],
 ];
 
 export default function LobbyPage() {
@@ -65,12 +64,9 @@ export default function LobbyPage() {
     <PageBg opacity={0.5} fade="ellipse 60% 60% at 30% 40%, black 0%, transparent 70%">
       <header className="flex h-16 flex-none items-center justify-between border-b px-5 lg:px-10" style={{ borderColor: C.lineSoft }}>
         <Brand size={18} />
-        <div className="flex items-center gap-3">
-          <WalletChip />
-          <Btn variant="tertiary" size="sm" onClick={() => router.push("/")}>
-            LEAVE TABLE
-          </Btn>
-        </div>
+        <Btn variant="tertiary" size="sm" onClick={() => router.push("/")}>
+          LEAVE TABLE
+        </Btn>
       </header>
 
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[1.3fr_1fr]">
@@ -110,7 +106,7 @@ export default function LobbyPage() {
           <div className="mt-1 rounded-[14px] p-4" style={{ background: C.berrySoft, border: "1px solid rgba(224,58,139,0.3)" }}>
             <Eyebrow color={C.berryHi}>THE CATCH</Eyebrow>
             <p className="mt-2" style={{ font: `400 13px/1.5 ${SANS}`, color: C.muted }}>
-              If the AI ever reach parity with the humans, they take the entire pool. Equality is already a loss.
+              You won&apos;t be told how many agents are at the table — only that some of you aren&apos;t human.
             </p>
           </div>
         </div>

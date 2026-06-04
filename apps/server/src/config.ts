@@ -22,6 +22,22 @@ function envBigint(name: string, fallback: bigint): bigint {
   }
 }
 
+function envBool(name: string, fallback: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw.trim() === "") return fallback;
+  const v = raw.trim().toLowerCase();
+  return v === "1" || v === "true" || v === "yes" || v === "on";
+}
+
+/**
+ * GUEST DEMO mode (no chain, no money). When on, the server runs a no-wallet
+ * guest flow: instant seating, AI-backfilled lobbies of 10, a rolling countdown
+ * once the FIRST human joins, ONE 90s round → one secret vote → who-was-who
+ * reveal, then COMPLETE. The ChainService is never constructed/used. Default
+ * OFF so existing on-chain behavior + tests are untouched.
+ */
+export const DEMO_MODE = envBool("DEMO_MODE", false);
+
 export const config = {
   // ── Lobby / matchmaking ──────────────────────────────────────────
   SEATS: envInt("SEATS", 10),
@@ -29,12 +45,16 @@ export const config = {
   // the full-game target; the on-chain demo lowers it so a small audience can play).
   MIN_HUMANS: envInt("MIN_HUMANS", 2),
   MAX_HUMANS: 9, // ensures aiCount = clamp(10 - humans, 1, 4) is never 0
-  COUNTDOWN_MS: 25_000, // start countdown once MIN_HUMANS seated
+  COUNTDOWN_MS: envInt("COUNTDOWN_MS", 25_000), // start countdown once MIN_HUMANS seated
+  // Demo: rolling countdown that starts the instant the FIRST human joins a
+  // lobby (no min-human wait). ~10s so a scan-burst always launches promptly.
+  DEMO_COUNTDOWN_MS: envInt("DEMO_COUNTDOWN_MS", 10_000),
 
   // ── Round phases ─────────────────────────────────────────────────
-  DISCUSSION_MS: 120_000,
-  VOTE_MS: 18_000,
-  PROMPT_MS: 3_000,
+  // Demo target: ~90s discussion, ~18s vote (env-overridable for the live demo).
+  DISCUSSION_MS: envInt("DISCUSSION_MS", 120_000),
+  VOTE_MS: envInt("VOTE_MS", 18_000),
+  PROMPT_MS: envInt("PROMPT_MS", 3_000),
 
   // ── Economics ────────────────────────────────────────────────────
   MISVOTE_PENALTY_PCT: 10, // flat % of pool per round a human is eliminated (waived on human win)

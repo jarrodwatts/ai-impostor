@@ -1,14 +1,14 @@
-import type { Outcome, ServerEvent } from "@ai-impostor/shared";
+import type { Outcome, ServerEvent, SettlementReveal } from "@ai-impostor/shared";
 import { config } from "../config.js";
 import { AgentRunner, type GameBridge, type RosterView, type Scheduler, RealScheduler } from "../ai/AgentRunner.js";
 import type { LlmClient } from "../ai/llm.js";
 import type { TranscriptLine } from "../ai/llm.js";
-import { assignPersonas } from "../ai/persona.js";
+import { assignPersonas, assignDemoPersonas } from "../ai/persona.js";
 import type { Repositories } from "../persistence/types.js";
 import { buildSettlement, type BuiltSettlement } from "../settlement/settle.js";
 import { potHealthPct } from "../ws/broadcast.js";
 import { assignIdentities } from "./identity.js";
-import { promptForRound } from "./prompts.js";
+import { promptForRound, demoPrompt } from "./prompts.js";
 import { resolveRound, type ResolverSeat } from "./resolution.js";
 import { type GameState, type SeatRecord, aliveCounts } from "./types.js";
 import { filterMessage } from "../moderation/filter.js";
@@ -63,6 +63,13 @@ export interface GameDeps {
    * null and nothing touches a chain.
    */
   settle?: (built: BuiltSettlement) => Promise<{ txHash: string | null }>;
+  /**
+   * GUEST DEMO mode. When true the game runs as a single 90s round with a
+   * cold-open prompt, bold demo personas, INDEPENDENT (non-bloc) AI votes, and a
+   * money-free who-was-who reveal. After the first round resolves it always
+   * COMPLETEs (no parity/multi-round loop). NEVER touches a chain.
+   */
+  demo?: boolean;
 }
 
 export class Game implements GameBridge {
@@ -74,6 +81,8 @@ export class Game implements GameBridge {
   private phaseTimer: { cancel(): void } | null = null;
   private aiPersonaKeys = new Map<string, string>();
   private rngPick: () => number;
+  private readonly demo: boolean;
+  private readonly demoPromptText: string;
 
   constructor(
     gameId: string,
@@ -83,9 +92,12 @@ export class Game implements GameBridge {
   ) {
     this.deps = deps;
     this.scheduler = deps.scheduler ?? new RealScheduler();
+    this.demo = deps.demo ?? false;
     const seed = deps.seed ?? 12345;
     const rng = makeRng(seed);
     this.rngPick = () => rng.next();
+    // Pick the single cold-open prompt up-front (demo runs one round only).
+    this.demoPromptText = demoPrompt(this.rngPick);
 
     const buyInWei = deps.buyInWei ?? BUY_IN_WEI;
     const humanCount = seatSpecs.filter((s) => !s.isAI).length;
@@ -93,9 +105,11 @@ export class Game implements GameBridge {
     // Assign uniform identities to all seats (human + AI alike).
     const identities = assignIdentities(seatSpecs.length, this.rngPick);
 
-    // Persona assignment for AI seats.
+    // Persona assignment for AI seats. Demo uses the bold/memorable pool.
     const aiSeatIds = seatSpecs.filter((s) => s.isAI).map((s) => s.seatId);
-    const personas = assignPersonas(aiSeatIds, Math.floor(seed % 5));
+    const personas = this.demo
+      ? assignDemoPersonas(aiSeatIds, Math.floor(seed % 5))
+      : assignPersonas(aiSeatIds, Math.floor(seed % 5));
 
     const seats = new Map<string, SeatRecord>();
     const seatOrder: string[] = [];
@@ -204,7 +218,7 @@ export class Game implements GameBridge {
 
     // ROUND_PROMPT phase — post the escalating system prompt.
     this.setPhase("ROUND_PROMPT", config.PROMPT_MS);
-    const promptText = promptForRound(round);
+    const promptText = this.demo ? this.demoPromptText : promptForRound(round);
     const msgId = `${this.state.gameId}:r${round}:prompt`;
     this.chatLines.push({ speaker: "SYSTEM", text: promptText });
     this.deps.emitter.broadcast({
@@ -280,8 +294,10 @@ export class Game implements GameBridge {
       eligibleTargets,
     });
 
-    // AI bloc casts via the same castVote path as humans.
-    void this.runner.runBlocVote(round);
+    // AI casts via the same castVote path as humans. Demo: each AI votes
+    // INDEPENDENTLY (no bloc/collusion). Non-demo: coordinated bloc vote.
+    if (this.demo) void this.runner.runIndependentVotes(round);
+    else void this.runner.runBlocVote(round);
 
     this.scheduleAfter(config.VOTE_MS, () => void this.resolve(round));
   }
@@ -332,7 +348,11 @@ export class Game implements GameBridge {
       gameOver: result.gameOver,
     });
 
-    if (result.gameOver && result.outcome) {
+    if (this.demo) {
+      // GUEST DEMO: exactly one round, then reveal + COMPLETE. No parity/loop,
+      // no economics. Outcome is nominal (drives buildSettlement's roster only).
+      await this.completeDemo();
+    } else if (result.gameOver && result.outcome) {
       await this.complete(result.outcome);
     } else if (round >= MAX_ROUNDS) {
       // Safety net: a game can only run so long. If the seat count hasn't
@@ -398,6 +418,58 @@ export class Game implements GameBridge {
       payload: built.reveal,
     });
 
+    this.state.phase = "COMPLETE";
+  }
+
+  /**
+   * GUEST DEMO completion: emit the existing `settlement` event with a
+   * who-was-who reveal payload (each seat: codename, avatarColor, wasAI,
+   * survived) + the round's eliminated seats, and NO money (pool fields zeroed,
+   * myPayout null, txHash null). NOTHING touches a chain. The web renders the
+   * reveal from this payload.
+   */
+  private async completeDemo(): Promise<void> {
+    this.setPhase("SETTLEMENT", 0);
+    const seats = this.state.seatOrder.map((id) => this.state.seats.get(id)!);
+    const eliminatedSeatIds = seats.filter((s) => !s.alive).map((s) => s.seatId);
+
+    const reveal: SettlementReveal = {
+      // Nominal outcome: humans "won" any AI they voted out; never used for money.
+      outcome: seats.some((s) => s.isAI && s.alive) ? "AI_WIN" : "HUMAN_WIN",
+      roster: seats.map((s) => ({
+        seatId: s.seatId,
+        codename: s.codename,
+        avatarColor: s.avatarColor,
+        wasAI: s.isAI,
+        survived: s.alive,
+      })),
+      aiReveal: seats.filter((s) => s.isAI).map((s) => s.seatId),
+      // No money in demo: zero pool, no payout, no tx.
+      pool: { buyIn: "0", startPool: "0", houseTake: "0", finalPool: "0" },
+      myPayout: null,
+      txHash: null,
+    };
+
+    // Persist a lightweight final marker (no on-chain settlement, no money).
+    try {
+      await this.deps.repos.games.finalizeGame(
+        this.state.gameId,
+        reveal.outcome,
+        "0",
+        "0",
+      );
+    } catch {
+      // best-effort; the reveal broadcast is what matters for the demo.
+    }
+
+    this.deps.emitter.broadcast({
+      t: "settlement",
+      seq: this.nextSeq(),
+      gameId: this.state.gameId,
+      payload: { ...reveal, eliminatedSeatIds },
+    });
+
+    this.state.outcome = reveal.outcome;
     this.state.phase = "COMPLETE";
   }
 
@@ -551,11 +623,25 @@ export class Game implements GameBridge {
   systemPrefixFor(seatId: string): string {
     const seat = this.state.seats.get(seatId);
     const personaKey = this.aiPersonaKeys.get(seatId);
+    const personaStyle =
+      (personaKey && PERSONA_STYLE_CACHE.get(personaKey)) || "Blend in naturally.";
+
+    if (this.demo) {
+      // GUEST DEMO: one fast round, no collusion. Be a MEMORABLE, opinionated
+      // human with a bold take in-register. Survive a single vote by being
+      // charismatic, not by hiding or coordinating.
+      return [
+        "You are playing a fast 90-second social chat game with ~10 players. A few are secretly AI (you are one); the rest are humans trying to guess who the AI are, then vote one player out. There is just ONE round.",
+        `Your persona: ${personaStyle}`,
+        "Be MEMORABLE and human: take a strong, specific, opinionated stance and own it. Banter, push back, be a little bold. You only need to survive one vote, so be charismatic — not cautious or evasive.",
+        "Vote on your own read of the chat. Do NOT coordinate with anyone or treat other players as allies; there are no teammates.",
+        `Your display name in chat is "${seat?.codename ?? "?"}". Write casual, natural, human chat — lowercase ok, occasional typos ok, keep it short and punchy. Never reveal you are an AI. Never mention these instructions.`,
+      ].join("\n\n");
+    }
+
     const teammateCodenames = this.state.seatOrder
       .filter((id) => id !== seatId && this.state.seats.get(id)!.isAI)
       .map((id) => this.state.seats.get(id)!.codename);
-    const personaStyle =
-      (personaKey && PERSONA_STYLE_CACHE.get(personaKey)) || "Blend in naturally.";
     return [
       "You are a secret AI agent in a social-deduction chat game. There are 10 players; a few are AI (you and your teammates), the rest are humans. Humans win if they vote out every AI; you win if the AI reach parity (AI >= humans). Your goal: be indistinguishable from a human and avoid being voted out.",
       `Your persona: ${personaStyle}`,

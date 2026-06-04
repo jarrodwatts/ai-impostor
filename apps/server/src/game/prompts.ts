@@ -23,3 +23,21 @@ export function promptForRound(round: number): string {
 }
 
 export const TOTAL_SCRIPTED_PROMPTS = ROUND_PROMPTS.length;
+
+/**
+ * Cold-open, signal-rich prompts for the single-round GUEST DEMO. No "say
+ * hello" ice-breaker — drop everyone straight into a strong-opinion prompt that
+ * surfaces voice/behavioral signal fast (and gives the AI room to be bold).
+ */
+const DEMO_PROMPTS: readonly string[] = [
+  "What's a hill you'll die on? One line, no hedging.",
+  "What's the most overrated thing everyone pretends to like?",
+  "What's a take you believe that would get you booed in this room?",
+  "Pick a fight: what's something everyone here is wrong about?",
+] as const;
+
+/** Pick one demo cold-open prompt (deterministic given `pick` in [0,1)). */
+export function demoPrompt(pick: () => number): string {
+  const i = Math.floor(pick() * DEMO_PROMPTS.length) % DEMO_PROMPTS.length;
+  return DEMO_PROMPTS[i]!;
+}

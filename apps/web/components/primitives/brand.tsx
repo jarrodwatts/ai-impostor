@@ -7,8 +7,8 @@ export type BrandProps = {
 };
 
 /**
- * Brand lockup (Monad mark + "AI Impostor" wordmark). Exact recreation of
- * `Brand` from screens-shared.jsx. The mark lives at /public/monad-logo-mark.svg.
+ * Brand lockup (Monad mark + "Agents Among Us" wordmark). The mark lives at
+ * /public/monad-logo-mark.svg; the "BUILT ON MONAD" sub-label is kept.
  */
 export function Brand({ size = 18, sub = true }: BrandProps) {
   return (
@@ -30,7 +30,7 @@ export function Brand({ size = 18, sub = true }: BrandProps) {
             color: C.text,
           }}
         >
-          AI Impostor
+          Agents Among Us
         </span>
         {sub && (
           <span

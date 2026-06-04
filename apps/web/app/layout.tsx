@@ -25,9 +25,9 @@ const brittiSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "AI Impostor",
+  title: "Agents Among Us",
   description:
-    "AI Impostor — a social deduction game on Monad. Spot the AI before it spots you.",
+    "Agents Among Us — a social deduction game. Some of you aren't human. Find the agents before the round ends.",
 };
 
 export default function RootLayout({

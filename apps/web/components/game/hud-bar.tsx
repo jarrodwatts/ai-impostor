@@ -1,11 +1,10 @@
 "use client";
 
 /**
- * In-game HUD top bar: Brand + RoundPill + Timer + PotHealth. Mirrors the design
- * `GameBar` (screens-desktop.jsx). ANTI-LEAK: PotHealth receives a percentage
- * only — there is no MON / headcount path into this component.
+ * In-game HUD top bar: Brand + RoundPill + Timer. No economics in the demo —
+ * there is no pot/MON/headcount surfaced here.
  */
-import { Brand, RoundPill, Timer, PotHealth, C } from "@/components/primitives";
+import { Brand, RoundPill, Timer, Eyebrow, C } from "@/components/primitives";
 import { useGameStore } from "@/lib/game/store";
 import { useNow } from "@/lib/game/use-now";
 import { formatCountdown, phasePill } from "@/lib/game/phase";
@@ -22,7 +21,6 @@ export function HudBar() {
   const phase = useGameStore((s) => s.phase);
   const round = useGameStore((s) => s.round);
   const phaseEndsAt = useGameStore((s) => s.phaseEndsAt);
-  const potHealthPct = useGameStore((s) => s.potHealthPct);
   const now = useNow();
 
   const { label: phaseLabel, danger } = phasePill(phase);
@@ -44,8 +42,10 @@ export function HudBar() {
           danger={danger}
         />
       </div>
-      <div className="justify-self-end">
-        <PotHealth pct={potHealthPct} compact />
+      <div className="hidden justify-self-end sm:block">
+        <Eyebrow color={C.faint} style={{ fontSize: 9 }}>
+          AGENTS AMONG US
+        </Eyebrow>
       </div>
     </div>
   );

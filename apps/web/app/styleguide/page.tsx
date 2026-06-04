@@ -15,7 +15,7 @@ import {
   Brand,
 } from "@/components/primitives";
 
-export const metadata = { title: "AI Impostor — Styleguide" };
+export const metadata = { title: "Agents Among Us — Styleguide" };
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (

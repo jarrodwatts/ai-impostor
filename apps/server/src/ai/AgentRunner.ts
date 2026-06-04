@@ -202,6 +202,49 @@ export class AgentRunner {
   }
 
   /**
+   * GUEST DEMO voting: each living AI casts ONE INDEPENDENT vote (no bloc, no
+   * collusion). Each AI asks the LLM for its own read over all OTHER living
+   * seats (humans AND other AI are fair game — there are no teammates in the
+   * demo). Casts go through the same castVote path humans use and are staggered
+   * within the vote window. Falls back to a deterministic pick if the LLM's
+   * choice doesn't map to an eligible seat.
+   */
+  async runIndependentVotes(round: number): Promise<void> {
+    const roster = this.bridge.roster();
+    const aiSeats = roster.filter((r) => r.isAI && r.alive);
+    if (aiSeats.length === 0) return;
+
+    let i = 0;
+    for (const ai of aiSeats) {
+      const others = roster.filter((r) => r.alive && r.seatId !== ai.seatId);
+      if (others.length === 0) continue;
+      const eligibleCodenames = others.map((r) => r.codename);
+      let targetSeatId: string | null = null;
+      try {
+        const vote = await this.llm.chooseVote({
+          systemPrefix: this.bridge.systemPrefixFor(ai.seatId),
+          transcript: this.bridge.transcript(),
+          selfCodename: ai.codename,
+          eligibleTargets: eligibleCodenames,
+        });
+        const match = others.find((r) => r.codename === vote.targetCodename);
+        targetSeatId = match?.seatId ?? null;
+      } catch {
+        targetSeatId = null;
+      }
+      // Fallback: deterministic eligible pick so every AI always casts a vote.
+      if (!targetSeatId) {
+        const sorted = [...others].sort((a, b) => a.seatId.localeCompare(b.seatId));
+        targetSeatId = sorted[0]!.seatId;
+      }
+      const delay = Math.round(this.rng.next() * 1500) + i * 200;
+      await this.scheduler.sleep(delay);
+      this.bridge.castVote(ai.seatId, targetSeatId, round);
+      i++;
+    }
+  }
+
+  /**
    * Cast the AI bloc's votes for `round` via the same path humans use. The bloc
    * sees each other's intended votes and piles onto one human (BLOC_COHESION).
    * Casts are staggered slightly so they don't all land on the same tick.

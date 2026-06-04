@@ -1,18 +1,19 @@
 /**
- * Mock WebSocket game server — scripts a believable full game so every screen
- * is demoable without the real server (which lands in M5). It implements the
- * exact same `GameSocket` interface as the real transport, emits only validated
- * `ServerEvent`s, and honors the protocol's anti-leak shape (no AI identities or
- * MON until the final `settlement` event).
+ * Mock WebSocket game server — scripts the "Agents Among Us" demo flow so every
+ * screen is demoable with no real server. It implements the same `GameSocket`
+ * interface as the live transport, emits only validated `ServerEvent`s, and
+ * honors the protocol's anti-leak shape (no agent identities until settlement).
  *
- * The script follows the design reference's worked example:
- *   - 10 seats (codenames/colors from PLAYERS), viewer = seat p1 ("VIOLET HERON")
- *   - round prompt → discussion (chat + typing) → vote → resolve (elimination)
- *   - a misvote (human eliminated → pot −10%) then the AI are caught
- *   - terminal `settlement` reveal: HUMAN_WIN, AI = SLATE OWL + ASH VOLE
+ * Demo flow (matches the live server's demo mode — NO wallet, NO chain, NO MON):
+ *   - client sends `request_join {address:"guest"}`
+ *   - server seats immediately → `lobby_open` → brief fill → `game_started`
+ *   - ONE 90s round: round_started (prompt) → discussion (chat + typing) →
+ *     vote_open → round_resolved
+ *   - terminal `settlement` reveal: who-was-who (HUMAN/AGENT), NO money fields
+ *     rendered (the reveal screen ignores pool/payout entirely).
  *
- * Timings are compressed for demo (a few seconds per phase) but every phase is
- * driven by a real `phaseEndsAt` the client counts down from.
+ * 10 seats (codenames/colors from PLAYERS), viewer = seat p1 ("VIOLET HERON").
+ * The two agents are SLATE OWL (p6) + ASH VOLE (p10), revealed only at the end.
  */
 import type {
   PublicSeat,
@@ -27,19 +28,20 @@ import {
   type ServerEventHandler,
 } from "./game-socket";
 
-const GAME_ID = "4471"; // numeric so the join CTA's BigInt(gameId) is valid
+const GAME_ID = "4471";
 const MY_SEAT = "p1";
-const MOCK_BUY_IN_WEI = "5000000000000000000"; // 5 MON
-const MOCK_ESCROW = "0x25c4966C497F5E633a110314Dc284942C284ebc1";
 const MOCK_MIN_HUMANS = 6;
 
-// Compressed demo timings (ms).
-const PROMPT_MS = 3_500;
-const DISCUSSION_MS = 9_000;
-const VOTE_MS = 6_000;
-const RESOLVE_MS = 4_500;
+// Demo timings (ms). The discussion phase is the headline 90s round.
+const LOBBY_FILL_MS = 1_200;
+const PROMPT_MS = 4_000;
+const DISCUSSION_MS = 90_000;
+const VOTE_MS = 12_000;
+const RESOLVE_MS = 3_500;
 
-// Final truth — revealed ONLY in the settlement payload (mirrors design TRUTH).
+// The seat the table votes out in the single round (the room reads it well).
+const ELIMINATED_SEAT = "p10"; // ASH VOLE (agent)
+// Final truth — revealed ONLY in the settlement payload.
 const AI_SEATS = ["p6", "p10"]; // SLATE OWL, ASH VOLE
 
 const roster: PublicSeat[] = PLAYERS.map((p) => ({
@@ -51,58 +53,23 @@ const roster: PublicSeat[] = PLAYERS.map((p) => ({
 
 type ScriptedMessage = { seat: string; text: string; typingMs: number };
 
-type Round = {
-  prompt: string;
-  chat: ScriptedMessage[];
-  /** seat eliminated this round (the table's most-voted) */
-  eliminated: string;
-  /** pot health AFTER this round resolves */
-  potAfter: number;
-  /** does resolving this round end the game? */
-  gameOver: boolean;
-};
-
-// Scripted arc: R1 catches an AI (no penalty), R2 misvotes a human (−10%),
-// R3 catches the last AI → human win.
-const ROUNDS: Round[] = [
-  {
-    prompt: "What's a hot take you'd defend to the death?",
-    chat: [
-      { seat: "p2", text: "pineapple on pizza is correct and you all know it", typingMs: 1200 },
-      { seat: "p8", text: "cereal before milk, every time. no exceptions", typingMs: 1100 },
-      { seat: "p10", text: "objectively, breakfast foods are optimal at all hours.", typingMs: 900 },
-      { seat: "p5", text: "ash you sound like a press release lol", typingMs: 1000 },
-    ],
-    eliminated: "p10", // ASH VOLE (AI) — caught, no penalty
-    potAfter: 100,
-    gameOver: false,
-  },
-  {
-    prompt: "Describe a time you genuinely embarrassed yourself.",
-    chat: [
-      { seat: "p4", text: "i called my teacher 'mom' in grade 4 and wanted to evaporate", typingMs: 1400 },
-      { seat: "p9", text: "walked face-first into a glass door at an apple store", typingMs: 1300 },
-      { seat: "p1", text: "tripped going UP the stairs at a wedding. going UP", typingMs: 1200 },
-      { seat: "p6", text: "i'd rather not get into it honestly", typingMs: 800 },
-    ],
-    eliminated: "p4", // CRIMSON FOX (human) — misvote, −10%
-    potAfter: 90,
-    gameOver: false,
-  },
-  {
-    prompt: "If you had to lie convincingly right now, what would you say?",
-    chat: [
-      { seat: "p2", text: "slate is still dodging every prompt btw", typingMs: 1100 },
-      { seat: "p9", text: "agreed. one of them types too clean", typingMs: 1000 },
-      { seat: "p6", text: "I would simply state a plausible falsehood.", typingMs: 700 },
-      { seat: "p8", text: "...slate that is the most ai sentence ever written", typingMs: 1200 },
-    ],
-    eliminated: "p6", // SLATE OWL (AI) — caught → human win
-    potAfter: 90,
-    gameOver: true,
-  },
+// One round's worth of chat — typing indicators on for realism. Spread across
+// the 90s discussion window by the scheduler below.
+const PROMPT = "What's a hot take you'd defend to the death?";
+const CHAT: ScriptedMessage[] = [
+  { seat: "p2", text: "pineapple on pizza is correct and you all know it", typingMs: 1400 },
+  { seat: "p8", text: "cereal before milk, every time. no exceptions", typingMs: 1300 },
+  { seat: "p10", text: "objectively, breakfast foods are optimal at all hours.", typingMs: 900 },
+  { seat: "p5", text: "ash you sound like a press release lol", typingMs: 1200 },
+  { seat: "p3", text: "hot dogs are sandwiches. i will not be taking questions", typingMs: 1500 },
+  { seat: "p6", text: "I would prefer not to weigh in on this matter.", typingMs: 800 },
+  { seat: "p9", text: "slate dodging every single prompt is suspicious ngl", typingMs: 1300 },
+  { seat: "p8", text: "...slate that is the most ai sentence ever written", typingMs: 1400 },
+  { seat: "p2", text: "ok real talk one of these two types way too clean", typingMs: 1600 },
 ];
 
+// Settlement reveal — who-was-who. The money fields below are required by the
+// shared schema but are NEVER rendered in the demo reveal (no pot/payout/MON/tx).
 function settlementReveal(): SettlementReveal {
   return {
     outcome: "HUMAN_WIN",
@@ -111,18 +78,13 @@ function settlementReveal(): SettlementReveal {
       codename: p.name,
       avatarColor: p.c,
       wasAI: AI_SEATS.includes(p.id),
-      // survived = still alive at end (eliminated: p10, p4, p6)
-      survived: !["p10", "p4", "p6"].includes(p.id),
+      survived: p.id !== ELIMINATED_SEAT,
     })),
     aiReveal: AI_SEATS,
-    pool: {
-      buyIn: "5000000000000000000", // 5 MON
-      startPool: "50000000000000000000", // 10 seats * 5 (illustrative)
-      houseTake: "7600000000000000000", // misvote cut
-      finalPool: "32400000000000000000",
-    },
-    myPayout: "5400000000000000000", // 5.4 MON to this surviving human
-    txHash: "0x9c4adf201aa00bb11cc22dd33ee44ff556677889900aabbccddeeff0011220201",
+    // Schema-required but unused by the reveal UI (zeroed, no economics):
+    pool: { buyIn: "0", startPool: "0", houseTake: "0", finalPool: "0" },
+    myPayout: null,
+    txHash: null,
   };
 }
 
@@ -141,26 +103,6 @@ export class MockGameSocket implements GameSocket {
     if (this.started) return;
     this.started = true;
     this.emitter.emitConnection(true);
-    // Open the on-chain demo lobby so the new join UI has a target. The scripted
-    // game is gated behind the join handshake (request_join → pay → confirm),
-    // mirroring the live server — a no-op "join" still drives a full game.
-    this.timers.push(
-      setTimeout(() => {
-        if (this.started) this.emitLobbyOpen();
-      }, 150),
-    );
-  }
-
-  private emitLobbyOpen(seated = 1): void {
-    this.emit({
-      t: "lobby_open",
-      seq: this.next(),
-      gameId: GAME_ID,
-      escrowAddress: MOCK_ESCROW,
-      buyInWei: MOCK_BUY_IN_WEI,
-      minHumans: MOCK_MIN_HUMANS,
-      humansSeated: seated,
-    });
   }
 
   disconnect(): void {
@@ -180,13 +122,28 @@ export class MockGameSocket implements GameSocket {
     this.emitter.emitEvent(ev);
   }
 
-  /** Schedule the entire scripted game as a chain of timed steps. */
+  /** Schedule the entire scripted demo as a chain of timed steps. */
   private runScript(): void {
     const steps: Step[] = [];
 
+    // lobby_open (guest seated immediately) → brief fill animation.
+    steps.push({
+      delayMs: 150,
+      run: (emit) =>
+        emit({
+          t: "lobby_open",
+          seq: this.next(),
+          gameId: GAME_ID,
+          escrowAddress: "0x0000000000000000000000000000000000000000",
+          buyInWei: "0",
+          minHumans: MOCK_MIN_HUMANS,
+          humansSeated: MOCK_MIN_HUMANS,
+        }),
+    });
+
     // game_started
     steps.push({
-      delayMs: 200,
+      delayMs: LOBBY_FILL_MS,
       run: (emit) =>
         emit({
           t: "game_started",
@@ -199,111 +156,99 @@ export class MockGameSocket implements GameSocket {
         }),
     });
 
-    ROUNDS.forEach((rnd, i) => {
-      const roundNo = i + 1;
+    // round_started → ROUND_PROMPT
+    steps.push({
+      delayMs: 400,
+      run: (emit) =>
+        emit({
+          t: "round_started",
+          seq: this.next(),
+          round: 1,
+          promptText: PROMPT,
+          phaseEndsAt: Date.now() + PROMPT_MS,
+        }),
+    });
 
-      // round_started → ROUND_PROMPT
+    // phase → ROUND_DISCUSSION (the 90s round)
+    steps.push({
+      delayMs: PROMPT_MS,
+      run: (emit) =>
+        emit({
+          t: "phase_changed",
+          seq: this.next(),
+          round: 1,
+          phase: "ROUND_DISCUSSION",
+          phaseEndsAt: Date.now() + DISCUSSION_MS,
+        }),
+    });
+
+    // discussion chat with typing indicators, spread across the window.
+    const perMsg = Math.max(1, Math.floor((DISCUSSION_MS * 0.85) / (CHAT.length + 1)));
+    CHAT.forEach((m) => {
       steps.push({
-        delayMs: 400,
+        delayMs: Math.max(400, perMsg - m.typingMs),
+        run: (emit) =>
+          emit({ t: "typing", seq: this.next(), seatId: m.seat, isTyping: true }),
+      });
+      steps.push({
+        delayMs: m.typingMs,
         run: (emit) =>
           emit({
-            t: "round_started",
+            t: "chat_message",
             seq: this.next(),
-            round: roundNo,
-            promptText: rnd.prompt,
-            phaseEndsAt: Date.now() + PROMPT_MS,
+            msgId: `r1-${m.seat}-${this.seq}`,
+            seatId: m.seat,
+            text: m.text,
+            ts: Date.now(),
           }),
       });
+    });
 
-      // phase → ROUND_DISCUSSION
-      steps.push({
-        delayMs: PROMPT_MS,
-        run: (emit) =>
-          emit({
-            t: "phase_changed",
-            seq: this.next(),
-            round: roundNo,
-            phase: "ROUND_DISCUSSION",
-            phaseEndsAt: Date.now() + DISCUSSION_MS,
-          }),
-      });
-
-      // discussion chat with typing indicators (AI realism = timing)
-      const perMsg = Math.max(1, Math.floor(DISCUSSION_MS / (rnd.chat.length + 1)));
-      rnd.chat.forEach((m) => {
-        // typing on
-        steps.push({
-          delayMs: Math.max(300, perMsg - m.typingMs),
-          run: (emit) =>
-            emit({ t: "typing", seq: this.next(), seatId: m.seat, isTyping: true }),
+    // phase → VOTE_WINDOW + vote_open (eligible = alive, not me)
+    steps.push({
+      delayMs: 800,
+      run: (emit) => {
+        const eligible = roster
+          .filter((s) => s.alive && s.seatId !== MY_SEAT)
+          .map((s) => s.seatId);
+        this.hasVoted = false;
+        emit({
+          t: "vote_open",
+          seq: this.next(),
+          round: 1,
+          phaseEndsAt: Date.now() + VOTE_MS,
+          eligibleTargets: eligible,
         });
-        // message (clears typing in the reducer)
-        steps.push({
-          delayMs: m.typingMs,
-          run: (emit) =>
-            emit({
-              t: "chat_message",
-              seq: this.next(),
-              msgId: `r${roundNo}-${m.seat}-${this.seq}`,
-              seatId: m.seat,
-              text: m.text,
-              ts: Date.now(),
-            }),
+      },
+    });
+
+    // resolve → round_resolved (eliminate the voted seat, end the game)
+    steps.push({
+      delayMs: VOTE_MS,
+      run: (emit) => {
+        const seat = roster.find((s) => s.seatId === ELIMINATED_SEAT);
+        if (seat) seat.alive = false;
+        emit({
+          t: "round_resolved",
+          seq: this.next(),
+          round: 1,
+          eliminatedSeatIds: [ELIMINATED_SEAT],
+          potHealthPct: 100,
+          gameOver: true,
         });
-      });
+      },
+    });
 
-      // phase → VOTE_WINDOW + vote_open (eligible = alive, not me)
-      steps.push({
-        delayMs: 600,
-        run: (emit) => {
-          const eligible = roster
-            .filter((s) => s.alive && s.seatId !== MY_SEAT)
-            .map((s) => s.seatId);
-          this.hasVoted = false; // fresh ballot each round (secret ballot)
-          emit({
-            t: "vote_open",
-            seq: this.next(),
-            round: roundNo,
-            phaseEndsAt: Date.now() + VOTE_MS,
-            eligibleTargets: eligible,
-          });
-        },
-      });
-
-      // resolve → round_resolved (eliminate seat, update pot, flip alive flag)
-      steps.push({
-        delayMs: VOTE_MS,
-        run: (emit) => {
-          const seat = roster.find((s) => s.seatId === rnd.eliminated);
-          if (seat) seat.alive = false;
-          // if the viewer was the one eliminated, send you_eliminated too
-          if (rnd.eliminated === MY_SEAT) {
-            emit({ t: "you_eliminated", seq: this.next(), round: roundNo });
-          }
-          emit({
-            t: "round_resolved",
-            seq: this.next(),
-            round: roundNo,
-            eliminatedSeatIds: [rnd.eliminated],
-            potHealthPct: rnd.potAfter,
-            gameOver: rnd.gameOver,
-          });
-        },
-      });
-
-      // settlement reveal at the end of the final round
-      if (rnd.gameOver) {
-        steps.push({
-          delayMs: RESOLVE_MS,
-          run: (emit) =>
-            emit({
-              t: "settlement",
-              seq: this.next(),
-              gameId: GAME_ID,
-              payload: settlementReveal(),
-            }),
-        });
-      }
+    // settlement reveal (who-was-who)
+    steps.push({
+      delayMs: RESOLVE_MS,
+      run: (emit) =>
+        emit({
+          t: "settlement",
+          seq: this.next(),
+          gameId: GAME_ID,
+          payload: settlementReveal(),
+        }),
     });
 
     this.schedule(steps);
@@ -323,26 +268,16 @@ export class MockGameSocket implements GameSocket {
   }
 
   send(ev: import("@ai-impostor/shared").ClientEvent): void {
-    // On-chain demo handshake (mock): re-advertise the lobby on request_join;
-    // on confirm_payment, "seat" the player and kick off the scripted game. The
-    // mock accepts any tx hash (no real chain), so the join CTA proceeds.
+    // Guest demo handshake (mock): on request_join, seat the player immediately
+    // and kick off the scripted round. No payment step, no chain, no MON.
     if (ev.t === "request_join") {
-      this.emitLobbyOpen(1);
-      return;
-    }
-    if (ev.t === "confirm_payment") {
       if (this.gameStarted) return;
       this.gameStarted = true;
-      // Briefly reflect seating, then start the scripted game.
-      this.timers.push(
-        setTimeout(() => {
-          if (this.started) this.runScript();
-        }, 600),
-      );
+      this.runScript();
       return;
     }
-    // The mock only needs to react to votes (secret ballot): ack the first cast,
-    // reject any recast. It never echoes the target to anyone.
+    // Secret ballot: ack the first cast, reject any recast. Never echo the
+    // target to anyone.
     if (ev.t === "cast_vote") {
       if (this.hasVoted) {
         this.emit({
@@ -362,7 +297,7 @@ export class MockGameSocket implements GameSocket {
         accepted: true,
       });
     }
-    // send_message / set_typing / heartbeat are no-ops in the mock.
+    // send_message / set_typing / heartbeat / confirm_payment are no-ops here.
   }
 
   onEvent(handler: ServerEventHandler): () => void {
@@ -376,9 +311,9 @@ export class MockGameSocket implements GameSocket {
 
 /**
  * One mock socket per client session (created once by SocketProvider). It scripts
- * the full lobby_open → seat → game → settlement arc and persists across the
- * queue → /play navigation without re-mounting — the script is kicked off on
- * `confirm_payment` and driven by its own timers, independent of the route.
+ * the full guest-join → 90s round → who-was-who reveal arc and persists across
+ * the queue → /play navigation without re-mounting — the script is kicked off on
+ * `request_join` and driven by its own timers, independent of the route.
  */
 export function createMockGameSocket(): GameSocket {
   return new MockGameSocket();

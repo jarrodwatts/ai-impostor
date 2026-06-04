@@ -1,75 +1,69 @@
 "use client";
 
 /**
- * Matchmaking / on-chain join screen. This is the live player-funded handshake:
+ * Guest join / lobby screen. Opens a guest session on the shared socket and
+ * auto-advances into the game — no wallet, no faucet, no buy-in, no MON.
  *
- *   request_join {address}  →  server: lobby_open {gameId, escrowAddress,
- *   buyInWei, minHumans, humansSeated}  →  user pays join(gameId) {value:buyInWei}
- *   on-chain  →  wait for receipt  →  confirm_payment {gameId, address, txHash}
- *   →  server seats us (game_started)  →  route into /play/[gameId].
+ *   request_join {address:"guest"}  →  server seats us (demo mode)  →
+ *   lobby_open / game_started  →  route into /play/[gameId].
  *
- * Buy-in amount + seating progress come from the server's lobby_open; useBuyIn()
- * reads the on-chain buyIn() as a display fallback before lobby_open arrives.
- * `join_rejected` surfaces a visible error with a retry. The mock path simulates
- * lobby_open + seating so this screen never dead-ends without a server.
+ * `join_rejected` surfaces a visible error with a retry. The mock path scripts
+ * the same arc so this screen never dead-ends without a server.
  */
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAccount } from "wagmi";
 import { Brand, Btn, Eyebrow, C, DISP, SANS } from "@/components/primitives";
 import { PageBg } from "@/components/chrome/page-bg";
-import { WalletButton, WalletChip } from "@/components/chrome/wallet-button";
-import { FaucetButton } from "@/components/chrome/faucet-button";
-import { useBuyIn, formatMon } from "@/lib/chain/use-escrow";
 import { useLobbyJoin } from "@/lib/game/use-lobby-join";
-import { isLiveSocket } from "@/lib/ws/factory";
 
 export default function QueuePage() {
   const router = useRouter();
-  const { isConnected } = useAccount();
-  const { buyInWei } = useBuyIn();
-  const {
-    status,
-    error,
-    joinRejectedReason,
-    lobby,
-    gameId,
-    payAndJoin,
-    retry,
-    canPay,
-  } = useLobbyJoin();
+  const { status, joinRejectedReason, lobby, gameId, retry } = useLobbyJoin();
 
   // Once the server seats us, head into the game.
   useEffect(() => {
     if (status === "seated" && gameId) router.push(`/play/${gameId}`);
   }, [status, gameId, router]);
 
-  // Prefer the server's lobby buy-in; fall back to the on-chain read pre-lobby.
-  const displayBuyIn = lobby ? BigInt(lobby.buyInWei) : buyInWei;
   const seated = lobby?.humansSeated ?? 0;
   const minHumans = lobby?.minHumans ?? 0;
+  const fillLabel = minHumans > 0 ? `${seated}/${minHumans}` : "10";
 
-  const ctaLabel = (() => {
+  const headline = (() => {
     switch (status) {
       case "connecting":
-        return "CONNECTING…";
-      case "waiting_lobby":
-        return "FINDING A TABLE…";
-      case "paying":
-        return "CONFIRM IN WALLET…";
-      case "confirming":
-        return "SEATING YOU…";
+        return "Connecting…";
+      case "joining":
+        return "Finding your table…";
+      case "lobby":
+        return "Table filling…";
       case "seated":
-        return "JOINED — ENTERING…";
-      default:
-        return `PAY ${formatMon(displayBuyIn)} MON & JOIN`;
+        return "Seated — entering…";
     }
   })();
 
-  const busy = status !== "ready";
-  // Live path requires a connected wallet to pay the on-chain buy-in; the
-  // mock/demo path does not (no real chain).
-  const needsWallet = isLiveSocket() && !isConnected;
+  const sub = (() => {
+    switch (status) {
+      case "lobby":
+        return (
+          <>
+            You&apos;re seated.{" "}
+            <span style={{ color: C.text }}>{seated}/{minHumans}</span> at the
+            table — some are AI agents, you won&apos;t be told how many.
+          </>
+        );
+      case "seated":
+        return <>Dealing names and faces — the round is about to begin.</>;
+      default:
+        return (
+          <>
+            You&apos;ll join up to 9 others.{" "}
+            <span style={{ color: C.text }}>Some are AI agents</span> — you
+            won&apos;t be told how many.
+          </>
+        );
+    }
+  })();
 
   return (
     <PageBg opacity={0.5} fade="ellipse 55% 60% at 50% 46%, black 0%, transparent 70%">
@@ -78,10 +72,7 @@ export default function QueuePage() {
         style={{ borderColor: C.lineSoft }}
       >
         <Brand size={18} />
-        <div className="flex items-center gap-3">
-          {isConnected ? <WalletChip /> : <WalletButton label="CONNECT" />}
-          <Eyebrow color={C.faint}>QUICK MATCH</Eyebrow>
-        </div>
+        <Eyebrow color={C.faint}>QUICK MATCH</Eyebrow>
       </header>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-12">
@@ -119,7 +110,7 @@ export default function QueuePage() {
             }}
           >
             <span style={{ font: `500 26px/1 ${DISP}`, color: C.purple }}>
-              {minHumans > 0 ? `${seated}/${minHumans}` : "10"}
+              {fillLabel}
             </span>
           </div>
         </div>
@@ -129,83 +120,33 @@ export default function QueuePage() {
             className="text-3xl lg:text-[40px]"
             style={{ font: `500 1em/1.05 ${DISP}`, letterSpacing: "-0.03em", color: C.text }}
           >
-            {lobby ? "Take your seat." : "Finding your table…"}
+            {headline}
           </h1>
           <p
             className="mx-auto mt-3 max-w-sm"
             style={{ font: `400 15px/1.55 ${SANS}`, color: C.muted }}
           >
-            {lobby ? (
-              <>
-                Pay the buy-in on-chain to join the table.{" "}
-                <span style={{ color: C.text }}>
-                  {seated}/{minHumans} seated
-                </span>{" "}
-                — some are AI, you won&apos;t be told how many.
-              </>
-            ) : (
-              <>
-                You&apos;ll join up to 9 others.{" "}
-                <span style={{ color: C.text }}>1–4 are AI</span> — you won&apos;t be
-                told how many.
-              </>
-            )}
+            {sub}
           </p>
         </div>
 
-        <div className="flex gap-[14px]">
-          {[
-            ["BUY-IN", `${formatMon(displayBuyIn)} MON`],
-            ["SEATED", minHumans > 0 ? `${seated}/${minHumans}` : "—"],
-            ["SEATS", "10"],
-          ].map(([k, v]) => (
-            <div
-              key={k}
-              className="rounded-2xl px-[14px] py-4 text-center"
-              style={{ width: 130, background: C.bgRaise, border: `1px solid ${C.line}` }}
-            >
-              <div style={{ font: `500 20px/1 ${DISP}`, color: C.text }}>{v}</div>
-              <Eyebrow color={C.faint} style={{ fontSize: 9, marginTop: 8, display: "block" }}>
-                {k}
-              </Eyebrow>
-            </div>
-          ))}
-        </div>
-
-        {(joinRejectedReason || error) && (
+        {joinRejectedReason && (
           <div
             className="max-w-sm rounded-[14px] px-4 py-3 text-center"
             style={{ background: C.berrySoft, border: "1px solid rgba(224,58,139,0.35)" }}
           >
             <p style={{ font: `400 13px/1.4 ${SANS}`, color: C.berryHi }}>
-              {joinRejectedReason ?? error}
+              {joinRejectedReason}
             </p>
-            {joinRejectedReason && (
-              <Btn variant="berry" size="sm" style={{ marginTop: 10 }} onClick={retry}>
-                TRY AGAIN
-              </Btn>
-            )}
+            <Btn variant="berry" size="sm" style={{ marginTop: 10 }} onClick={retry}>
+              TRY AGAIN
+            </Btn>
           </div>
         )}
 
-        <div className="flex flex-col items-center gap-3">
-          {needsWallet ? (
-            <WalletButton label="CONNECT WALLET TO JOIN" variant="primary" size="default" />
-          ) : (
-            <Btn
-              variant="primary"
-              style={{ height: 46, padding: "0 26px" }}
-              onClick={payAndJoin}
-              disabled={busy || !canPay}
-            >
-              {ctaLabel}
-            </Btn>
-          )}
-          <FaucetButton variant="tertiary" size="sm" label="GET TEST MON" />
-          <Btn variant="tertiary" size="sm" onClick={() => router.push("/")}>
-            LEAVE QUEUE
-          </Btn>
-        </div>
+        <Btn variant="tertiary" size="sm" onClick={() => router.push("/")}>
+          LEAVE
+        </Btn>
       </div>
     </PageBg>
   );

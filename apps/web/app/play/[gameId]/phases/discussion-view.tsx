@@ -51,8 +51,7 @@ function SpectatorBanner() {
           You were eliminated — spectating
         </div>
         <div style={{ font: `400 12px/1.3 ${SANS}`, color: C.muted }}>
-          Read-only and muted. No payout — only survivors split the pool. AI
-          identities stay hidden until the game ends.
+          Read-only and muted. Agent identities stay hidden until the reveal.
         </div>
       </div>
     </div>

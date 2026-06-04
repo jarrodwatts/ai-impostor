@@ -11,6 +11,7 @@ import type { LlmClient } from "../ai/llm.js";
 import type { Repositories } from "../persistence/types.js";
 import { MatchmakingQueue } from "../matchmaking/queue.js";
 import { DemoLobby, type LobbyHost } from "../matchmaking/demoLobby.js";
+import { GuestLobby } from "../matchmaking/guestLobby.js";
 import type { ChainService } from "../chain/ChainService.js";
 import { signSettlement } from "../settlement/settle.js";
 import type { BuiltSettlement } from "../settlement/settle.js";
@@ -67,6 +68,14 @@ export interface GatewayOptions {
   chain?: ChainService;
   serverSignerKey?: `0x${string}`;
   /**
+   * GUEST DEMO mode (no chain, no money). When true the gateway runs the no-wallet
+   * guest lobby (instant seating, AI-backfill, rolling countdown, single 90s
+   * round) and ignores `chain`/`serverSignerKey` entirely — the ChainService is
+   * never used. `request_join {address}` seats immediately; `confirm_payment` is
+   * a no-op.
+   */
+  demo?: boolean;
+  /**
    * Existing HTTP server to attach the WS upgrade handler to (so the faucet +
    * /healthz share the port). When omitted the gateway opens its own ws server
    * on `port` (used by tests).
@@ -82,11 +91,17 @@ export class Gateway implements LobbyHost {
   private heartbeat: ReturnType<typeof setInterval> | null = null;
   private opts: GatewayOptions;
   private demoLobby: DemoLobby | null = null;
+  private guestLobby: GuestLobby | null = null;
+  private readonly demo: boolean;
 
   constructor(opts: GatewayOptions) {
     this.opts = opts;
+    this.demo = opts.demo ?? false;
     this.queue = new MatchmakingQueue();
-    if (opts.chain) {
+    if (this.demo) {
+      // GUEST DEMO: no-chain guest lobby. ChainService is never touched.
+      this.guestLobby = new GuestLobby(this, opts.scheduler);
+    } else if (opts.chain) {
       this.demoLobby = new DemoLobby(opts.chain, this, opts.scheduler);
     }
   }
@@ -94,6 +109,11 @@ export class Gateway implements LobbyHost {
   /** True when running the on-chain demo flow (request_join/confirm_payment). */
   get demoMode(): boolean {
     return this.demoLobby !== null;
+  }
+
+  /** True when running the no-chain guest demo flow. */
+  get guestMode(): boolean {
+    return this.guestLobby !== null;
   }
 
   listen(): void {
@@ -106,6 +126,7 @@ export class Gateway implements LobbyHost {
     this.wss.on("connection", (ws, req) => this.onConnection(ws, req?.url));
     this.heartbeat = setInterval(() => this.pingAll(), config.HEARTBEAT_MS);
     if (this.demoLobby) void this.demoLobby.init();
+    if (this.guestLobby) void this.guestLobby.init();
   }
 
   close(): void {
@@ -142,8 +163,9 @@ export class Gateway implements LobbyHost {
 
   private onClose(ctx: ConnContext): void {
     this.conns.delete(ctx.connId);
-    // Pre-start: drop them from the open demo lobby (re-indexes remaining seats).
+    // Pre-start: drop them from the open lobby (re-indexes remaining seats).
     this.demoLobby?.onDisconnect(ctx.connId);
+    this.guestLobby?.onDisconnect(ctx.connId);
     // Grace window / auto-eliminate is wired in M5/M6; here we just drop the
     // routing entry so broadcasts stop targeting a dead socket.
     if (ctx.gameId) {
@@ -194,9 +216,11 @@ export class Gateway implements LobbyHost {
         break;
       case "request_join":
         ctx.address = ev.address;
-        if (this.demoLobby) void this.demoLobby.requestJoin(ctx.connId, ev.address);
+        if (this.guestLobby) void this.guestLobby.requestJoin(ctx.connId, ev.address);
+        else if (this.demoLobby) void this.demoLobby.requestJoin(ctx.connId, ev.address);
         break;
       case "confirm_payment":
+        // No-op in guest demo (no chain). On-chain demo verifies + seats here.
         ctx.address = ev.address;
         if (this.demoLobby)
           void this.demoLobby.confirmPayment(
@@ -304,8 +328,10 @@ export class Gateway implements LobbyHost {
       toSeat: (seatId, ev) => this.sendToSeat(gameId, seatId, ev),
     };
 
-    const chain = this.opts.chain;
-    const signerKey = this.opts.serverSignerKey;
+    // GUEST DEMO: no chain — never construct a settle hook. The single-round
+    // game emits a money-free reveal on its own.
+    const chain = this.demo ? undefined : this.opts.chain;
+    const signerKey = this.demo ? undefined : this.opts.serverSignerKey;
     const settle = chain && signerKey
       ? async (built: BuiltSettlement) => {
           const sig = await signSettlement(
@@ -321,7 +347,8 @@ export class Gateway implements LobbyHost {
       repos: this.opts.repos,
       llm: this.opts.llm,
       emitter,
-      buyInWei: config.BUY_IN_WEI,
+      buyInWei: this.demo ? 0n : config.BUY_IN_WEI,
+      ...(this.demo ? { demo: true } : {}),
       ...(settle ? { settle } : {}),
       ...(this.opts.scheduler ? { scheduler: this.opts.scheduler } : {}),
     });

@@ -1,11 +1,12 @@
 import { PROTOCOL_VERSION } from "@ai-impostor/shared";
-import { config, httpPort, allowedOrigins } from "./config.js";
+import { config, httpPort, allowedOrigins, DEMO_MODE } from "./config.js";
 import { Gateway } from "./ws/gateway.js";
 import { createInMemoryRepositories } from "./persistence/memory.js";
 import { FakeLlmClient, type LlmClient } from "./ai/llm.js";
 import { AnthropicLlmClient } from "./ai/claude.js";
-import { makeChainService, type ChainService } from "./chain/ChainService.js";
+import { makeChainService, FakeChainService, type ChainService } from "./chain/ChainService.js";
 import { createHttpServer } from "./http/server.js";
+import type { Repositories } from "./persistence/types.js";
 
 /**
  * Realtime game server bootstrap.
@@ -27,10 +28,53 @@ function buildLlm(): LlmClient {
   return new FakeLlmClient();
 }
 
+/**
+ * GUEST DEMO bootstrap (DEMO_MODE=1). No chain, no wallet, no money: the gateway
+ * runs the no-wallet guest lobby (instant seating, AI-backfill, rolling ~10s
+ * countdown, single 90s round → secret vote → who-was-who reveal). The
+ * ChainService is NOT constructed/used; an in-memory FakeChainService is handed
+ * to the HTTP server purely so /healthz (and an inert /faucet) keep working —
+ * no RPC, no key, no tx. Uses the real Anthropic LLM when ANTHROPIC_API_KEY is
+ * set, else the deterministic fake.
+ */
+function mainDemo(port: number, repos: Repositories, llm: LlmClient): void {
+  // Inert no-chain service for the HTTP front-door only (faucet won't be used).
+  const chain = new FakeChainService();
+  const httpServer = createHttpServer({ chain });
+
+  const gateway = new Gateway({
+    repos,
+    llm,
+    httpServer,
+    demo: true, // no chain: guest lobby + single-round demo game
+  });
+  gateway.listen();
+
+  httpServer.listen(port, () => {
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ai-impostor server] GUEST DEMO MODE — HTTP+WS on :${port}, protocol v${PROTOCOL_VERSION}, ` +
+        `${config.SEATS} seats, rolling countdown ${config.DEMO_COUNTDOWN_MS}ms`,
+    );
+    // eslint-disable-next-line no-console
+    console.log(
+      `[ai-impostor server] demo: NO chain/wallet/money, ` +
+        `discussion=${config.DISCUSSION_MS}ms vote=${config.VOTE_MS}ms, ` +
+        `llm=${process.env.ANTHROPIC_API_KEY ? "anthropic" : "fake"}, ` +
+        `origins=${allowedOrigins().join(",")}`,
+    );
+  });
+}
+
 function main(): void {
   const port = httpPort();
   const repos = createInMemoryRepositories();
   const llm = buildLlm();
+
+  if (DEMO_MODE) {
+    mainDemo(port, repos, llm);
+    return;
+  }
 
   const chain: ChainService = makeChainService({
     ...(process.env.GAME_MANAGER_PRIVATE_KEY

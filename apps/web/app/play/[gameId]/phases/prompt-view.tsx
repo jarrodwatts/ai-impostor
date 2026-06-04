@@ -25,7 +25,7 @@ export function PromptView() {
         {promptText ? `“${promptText}”` : "Get ready…"}
       </h1>
       <p className="max-w-md" style={{ font: `400 16px/1.55 ${SANS}`, color: C.muted }}>
-        The prompts get more revealing each round. You have two minutes. Watch who dodges.
+        You have 90 seconds. Talk, read the room, and watch who dodges — some of them are agents.
       </p>
       <div className="flex">
         {alive.map((s, i) => (
