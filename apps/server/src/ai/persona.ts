@@ -65,11 +65,11 @@ export function assignPersonas(
 }
 
 /**
- * Demo persona pool — a mix of distinct voices for the in-person demo. These
+ * Demo persona pool: a mix of distinct voices for the in-person demo. These
  * are real humans at a social deduction game. They sound different from each
- * other and they care about different things — food, sports, music, work,
+ * other and they care about different things: food, sports, music, work,
  * weird life observations, the venue they happen to be at. A couple may nod
- * to being at an offsite in lisbon; most won't. Variety > thematic unity:
+ * to being at an offsite in lisbon. Most won't. Variety > thematic unity:
  * each persona only needs to survive one vote, so a believably mundane human
  * beats a clever-but-uniform crew.
  *
@@ -79,7 +79,7 @@ export function assignPersonas(
  *   - no em dashes, no semicolons, no "However,"-style essay openers
  *   - terse: 1 short sentence by default, 2 max
  *   - casual chat register, mild typos and dropped punctuation are fine
- *   - don't force slang or jargon — if it fits the persona it fits, otherwise
+ *   - don't force slang or jargon. if it fits the persona it fits, otherwise
  *     just talk like a person texting a group chat
  */
 export const DEMO_PERSONAS: readonly Persona[] = [
