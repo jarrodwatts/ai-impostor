@@ -42,6 +42,7 @@ const serverSamples: Record<string, ServerEvent> = {
     buyInWei: "10000000000000000",
     minHumans: 2,
     humansSeated: 1,
+    seats: 10,
     countdownEndsAt: 1700000000000,
   },
   join_rejected: { t: "join_rejected", seq: 22, reason: "payment_not_found" },

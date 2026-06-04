@@ -103,6 +103,7 @@ export class GuestLobby {
       buyInWei: "0", // no money in demo
       minHumans: 1, // demo starts on the first human
       humansSeated: l.guests.length,
+      seats: config.SEATS, // total table size — the fill denominator (humans + AI)
       ...(l.countdownEndsAt ? { countdownEndsAt: l.countdownEndsAt } : {}),
     };
   }

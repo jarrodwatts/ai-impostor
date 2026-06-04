@@ -50,6 +50,7 @@ export type GameState = {
     buyInWei: string;
     minHumans: number;
     humansSeated: number;
+    seats: number; // total table size (humans + AI) — the fill denominator
     countdownEndsAt?: number;
   } | null;
   joinRejectedReason: string | null;
@@ -134,6 +135,7 @@ export function applyServerEvent(state: GameState, ev: ServerEvent): GameState {
           buyInWei: ev.buyInWei,
           minHumans: ev.minHumans,
           humansSeated: ev.humansSeated,
+          seats: ev.seats,
           countdownEndsAt: ev.countdownEndsAt,
         },
         joinRejectedReason: null,
