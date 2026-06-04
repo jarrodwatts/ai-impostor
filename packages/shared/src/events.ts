@@ -83,6 +83,10 @@ export const ServerEvent = z.discriminatedUnion("t", [
     buyInWei: z.string(),
     minHumans: z.number().int().positive(),
     humansSeated: z.number().int().nonnegative(),
+    // Total seats at the table (humans + AI backfill). The fill indicator is
+    // humansSeated/seats; minHumans is only the launch threshold, never the
+    // display denominator (it is 1 in the demo, which made "1/1" / "2/1").
+    seats: z.number().int().positive(),
     countdownEndsAt: z.number().optional(),
   }),
   z.object({

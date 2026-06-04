@@ -48,7 +48,7 @@ export function VoteView() {
         </p>
       </div>
 
-      <div className="mb-7 grid w-full max-w-3xl grid-cols-3 gap-[9px] sm:grid-cols-4 lg:grid-cols-7 lg:gap-3">
+      <div className="mb-7 grid w-full max-w-2xl grid-cols-3 gap-[9px] sm:grid-cols-5 lg:gap-3">
         {targets.map((s) => (
           <VoteTargetCard
             key={s.seatId}

@@ -26,8 +26,10 @@ export default function QueuePage() {
   }, [status, gameId, router]);
 
   const seated = lobby?.humansSeated ?? 0;
-  const minHumans = lobby?.minHumans ?? 0;
-  const fillLabel = minHumans > 0 ? `${seated}/${minHumans}` : "10";
+  // Fill is shown against the full table (humans + AI backfill), NOT minHumans
+  // (the launch threshold, which is 1 in the demo and produced "1/1" / "2/1").
+  const tableSeats = lobby?.seats ?? 10;
+  const fillLabel = `${seated}/${tableSeats}`;
 
   const headline = (() => {
     switch (status) {
@@ -48,7 +50,7 @@ export default function QueuePage() {
         return (
           <>
             You&apos;re seated.{" "}
-            <span style={{ color: C.text }}>{seated}/{minHumans}</span>{" "}
+            <span style={{ color: C.text }}>{seated}/{tableSeats}</span>{" "}
             at the table — some are AI agents, you won&apos;t be told how many.
           </>
         );

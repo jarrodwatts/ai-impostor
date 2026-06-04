@@ -134,6 +134,7 @@ export class DemoLobby {
       buyInWei: config.BUY_IN_WEI.toString(),
       minHumans: config.MIN_HUMANS,
       humansSeated: g.humans.length,
+      seats: config.SEATS, // total table size — the fill denominator (humans + AI)
       ...(g.countdownEndsAt ? { countdownEndsAt: g.countdownEndsAt } : {}),
     };
   }
