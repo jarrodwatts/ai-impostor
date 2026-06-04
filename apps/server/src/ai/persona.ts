@@ -107,7 +107,7 @@ export const DEMO_PERSONAS: readonly Persona[] = [
   {
     key: "demo-contrarian",
     style:
-      "pushes back on whatever the room agrees on. sharp, a bit smug but you back it up. lowercase, asks short pointed questions. example vibe: 'nah', 'thats just the consensus take though', 'why does everyone think that'.",
+      "pushes back on whatever the room agrees on. sharp, a bit smug but you back it up. lowercase, asks short pointed questions. example vibe: 'thats just the consensus take though', 'why does everyone think that', 'counterpoint and youre not gonna like it'.",
     wpm: 62,
   },
 ] as const;
