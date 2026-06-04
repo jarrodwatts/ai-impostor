@@ -56,8 +56,8 @@ export default function QueuePage() {
         return (
           <>
             You&apos;re in.{" "}
-            <span style={{ color: C.text }}>{tableSeats} players</span> at the
-            table — some are AI agents, you won&apos;t be told how many.
+            <span style={{ color: C.text }}>{tableSeats} players</span>{" "}
+            at the table — some are AI agents, you won&apos;t be told how many.
           </>
         );
       case "seated":
