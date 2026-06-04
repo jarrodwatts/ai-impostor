@@ -4,6 +4,7 @@ import * as React from "react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 import { C } from "./tokens";
+import { audio } from "@/lib/audio/engine";
 
 /**
  * Radial pill button. Exact recreation of `Btn` from screens-shared.jsx
@@ -68,14 +69,20 @@ export function Btn({
   children,
   style,
   type = "button",
+  onClick,
   ...props
 }: BtnProps) {
   const vstyle = VARIANT_STYLE[variant ?? "primary"];
+  const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+    audio.playSfx("click");
+    onClick?.(e);
+  };
   return (
     <button
       type={type}
       className={cn(btnVariants({ variant, size, full }), className)}
       style={{ ...vstyle, ...style }}
+      onClick={handleClick}
       {...props}
     >
       {icon}
